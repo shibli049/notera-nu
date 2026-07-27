@@ -9,6 +9,17 @@ const exportCsvBtn = document.getElementById('export-csv-btn');
 const importInput = document.getElementById('import-input');
 const targetLangSelect = document.getElementById('target-lang-select');
 const ioStatusEl = document.getElementById('io-status');
+const expandBtn = document.getElementById('expand-btn');
+
+const isTabView = new URLSearchParams(location.search).get('view') === 'tab';
+if (isTabView) {
+  document.documentElement.classList.add('nota-tab-view');
+  expandBtn.hidden = true;
+} else {
+  expandBtn.addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('popup/popup.html') + '?view=tab' });
+  });
+}
 
 const CSV_COLUMNS = ['text', 'note', 'pageTitle', 'pageUrl', 'createdAt', 'updatedAt'];
 
@@ -36,6 +47,57 @@ function hostnameFromUrl(url) {
   }
 }
 
+function requestGrammarLookup(word) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: 'NOTA_SWEDISH_GRAMMAR', word }, (response) => {
+      if (chrome.runtime.lastError) {
+        resolve({ ok: false, error: chrome.runtime.lastError.message });
+        return;
+      }
+      resolve(response);
+    });
+  });
+}
+
+function renderGrammarBody(container, grammar) {
+  container.textContent = '';
+  for (const entry of grammar.entries) {
+    const section = document.createElement('div');
+    section.className = 'note-grammar-entry';
+
+    const posLabel = document.createElement('div');
+    posLabel.className = 'note-grammar-pos';
+    posLabel.textContent = entry.partOfSpeechLabel;
+    section.appendChild(posLabel);
+
+    if (entry.forms && entry.forms.length) {
+      const grid = document.createElement('div');
+      grid.className = 'note-grammar-forms';
+      for (const f of entry.forms) {
+        const labelEl = document.createElement('span');
+        labelEl.className = 'note-grammar-form-label';
+        labelEl.textContent = f.label;
+        const valueEl = document.createElement('span');
+        valueEl.className = 'note-grammar-form-value';
+        valueEl.textContent = f.form;
+        grid.append(labelEl, valueEl);
+      }
+      section.appendChild(grid);
+    }
+    container.appendChild(section);
+  }
+
+  if (grammar.saolUrl) {
+    const link = document.createElement('a');
+    link.className = 'note-grammar-link';
+    link.href = grammar.saolUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = 'Open in SAOL ↗';
+    container.appendChild(link);
+  }
+}
+
 function render(notes) {
   listEl.textContent = '';
   emptyStateEl.hidden = notes.length > 0;
@@ -58,6 +120,46 @@ function render(notes) {
     }
 
     node.querySelector('.note-time').textContent = formatTime(entry.updatedAt || entry.createdAt);
+
+    const grammarDetails = node.querySelector('.note-grammar');
+    const grammarBtn = node.querySelector('.grammar-btn');
+    if (entry.grammar && entry.grammar.entries && entry.grammar.entries.length) {
+      grammarDetails.hidden = false;
+      renderGrammarBody(grammarDetails.querySelector('.note-grammar-body'), entry.grammar);
+    } else if (entry.text && !/\s/.test(entry.text.trim())) {
+      // Single word with no grammar data yet (saved before this feature existed, or the
+      // automatic lookup found nothing at save time) — offer an on-demand fetch.
+      grammarBtn.hidden = false;
+      grammarBtn.addEventListener('click', async () => {
+        grammarBtn.disabled = true;
+        grammarBtn.textContent = 'Looking up…';
+        try {
+          const result = await requestGrammarLookup(entry.text);
+          if (result && result.ok && result.entries && result.entries.length) {
+            const grammar = { lookupWord: result.lookupWord, entries: result.entries, saolUrl: result.saolUrl };
+            await self.NotaStorage.updateNote(entry.id, { grammar });
+            entry.grammar = grammar;
+            entry.updatedAt = new Date().toISOString();
+            renderGrammarBody(grammarDetails.querySelector('.note-grammar-body'), grammar);
+            grammarDetails.hidden = false;
+            grammarDetails.open = true;
+            grammarBtn.remove();
+          } else if (result && result.ok) {
+            showIoStatus(`No Swedish grammar data found for "${entry.text}".`, true);
+            grammarBtn.disabled = false;
+            grammarBtn.textContent = 'Grammar';
+          } else {
+            showIoStatus('Grammar lookup failed: ' + (result && result.error ? result.error : 'unknown error'), true);
+            grammarBtn.disabled = false;
+            grammarBtn.textContent = 'Grammar';
+          }
+        } catch (err) {
+          showIoStatus('Grammar lookup failed: ' + err.message, true);
+          grammarBtn.disabled = false;
+          grammarBtn.textContent = 'Grammar';
+        }
+      });
+    }
 
     const editBtn = node.querySelector('.edit-btn');
     const saveEditBtn = node.querySelector('.save-edit-btn');
@@ -246,6 +348,7 @@ async function importNoteObjects(items) {
       note: (item.note || '').trim(),
       pageTitle: item.pageTitle || '',
       pageUrl: item.pageUrl || '',
+      grammar: item.grammar || null, // present for JSON imports only; CSV has no grammar column
       createdAt: item.createdAt || now,
       updatedAt: item.updatedAt || now,
     });

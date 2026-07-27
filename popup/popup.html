@@ -12,6 +12,7 @@
         <h1>Nota</h1>
       </div>
       <div class="nota-actions">
+        <button type="button" id="expand-btn" class="icon-btn" title="Open in a full browser tab">⤢ Full view</button>
         <details class="nota-menu">
           <summary class="icon-btn">Export ▾</summary>
           <div class="nota-menu-items">
@@ -87,10 +88,15 @@
             <a class="note-source" target="_blank" rel="noopener noreferrer"></a>
             <span class="note-time"></span>
           </div>
+          <details class="note-grammar" hidden>
+            <summary>Swedish grammar</summary>
+            <div class="note-grammar-body"></div>
+          </details>
         </div>
         <div class="note-controls">
           <button class="edit-btn" title="Edit">Edit</button>
           <button class="save-edit-btn" title="Save" hidden>Save</button>
+          <button class="grammar-btn" title="Look up Swedish grammar" hidden>Grammar</button>
           <button class="delete-btn" title="Delete">Delete</button>
         </div>
       </li>

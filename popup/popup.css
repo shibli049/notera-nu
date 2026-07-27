@@ -26,11 +26,26 @@
 
 body {
   margin: 0;
-  width: 340px;
-  max-height: 480px;
+  width: 672px; /* 420px + 60% — Chrome caps popup width around 800px, so this stays safely under it */
+  max-height: 560px;
   font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--nota-ink);
   background: var(--nota-paper);
+}
+
+/* Full-page view: opened via the "Full view" button as a normal browser tab
+   instead of the toolbar dropdown, so it isn't bound by Chrome's popup size cap. */
+html.nota-tab-view body {
+  width: 100%;
+  max-width: 760px;
+  max-height: none;
+  min-height: 100vh;
+  margin: 0 auto;
+  box-shadow: 0 0 0 1px var(--nota-line);
+}
+
+html.nota-tab-view #expand-btn {
+  display: none;
 }
 
 button:focus-visible,
@@ -228,8 +243,12 @@ a:focus-visible {
 }
 
 main {
-  max-height: 340px;
+  max-height: 420px;
   overflow-y: auto;
+}
+
+html.nota-tab-view main {
+  max-height: calc(100vh - 230px);
 }
 
 #notes-list {
@@ -297,11 +316,68 @@ main {
 .note-source {
   color: var(--nota-accent);
   text-decoration: none;
-  max-width: 140px;
+  max-width: 320px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.note-grammar {
+  margin-top: 5px;
+}
+
+.note-grammar summary {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--nota-accent);
+  cursor: pointer;
+}
+
+.note-grammar-body {
+  margin-top: 4px;
+  background: var(--nota-accent-soft);
+  border: 1px solid var(--nota-accent-soft-border);
+  border-radius: var(--nota-radius-sm);
+  padding: 6px 8px;
+}
+
+.note-grammar-entry + .note-grammar-entry {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--nota-accent-soft-border);
+}
+
+.note-grammar-pos {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--nota-accent-hover);
+  margin-bottom: 2px;
+}
+
+.note-grammar-forms {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  font-size: 11px;
+}
+
+.note-grammar-form-label { color: var(--nota-muted); }
+.note-grammar-form-value { font-weight: 600; color: var(--nota-ink); word-break: break-word; }
+
+.note-grammar-link {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--nota-accent-hover);
+  text-decoration: none;
+}
+
+.note-grammar-link:hover { text-decoration: underline; }
 
 .note-source:hover {
   text-decoration: underline;
@@ -328,6 +404,12 @@ main {
 
 .note-controls button:hover {
   background: var(--nota-accent-soft);
+}
+
+.note-controls button:disabled {
+  opacity: 0.6;
+  cursor: default;
+  background: transparent;
 }
 
 .delete-btn {

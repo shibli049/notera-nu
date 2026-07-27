@@ -133,6 +133,49 @@
       padding: 4px 6px;
       line-height: 1.35;
     }
+    .nota-grammar-box {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: var(--nota-accent-soft);
+      border: 1px solid var(--nota-accent-soft-border);
+      border-radius: var(--nota-radius-sm);
+      padding: 8px;
+    }
+    .nota-grammar-status {
+      font-size: 11px;
+      color: var(--nota-muted);
+    }
+    .nota-grammar-entry + .nota-grammar-entry {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid var(--nota-accent-soft-border);
+    }
+    .nota-grammar-pos {
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--nota-accent-hover);
+      margin-bottom: 3px;
+    }
+    .nota-grammar-forms {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 2px 10px;
+      font-size: 11.5px;
+    }
+    .nota-grammar-form-label { color: var(--nota-muted); }
+    .nota-grammar-form-value { font-weight: 600; color: var(--nota-ink); word-break: break-word; }
+    .nota-grammar-link {
+      align-self: flex-start;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--nota-accent-hover);
+      text-decoration: none;
+    }
+    .nota-grammar-link:hover { text-decoration: underline; }
+
     .nota-row { display: flex; gap: 8px; justify-content: flex-end; }
     .nota-row button {
       border: none;
@@ -213,6 +256,11 @@
         <span class="nota-translate-status" id="nota-translate-status"></span>
       </div>
       <div class="nota-translate-warning">Auto-translate uses an unofficial Google Translate endpoint — it can be slow, wrong, rate-limited, or fail entirely. Always double check it.</div>
+      <div class="nota-grammar-box" id="nota-grammar-box" hidden>
+        <div class="nota-grammar-status" id="nota-grammar-status"></div>
+        <div class="nota-grammar-entries" id="nota-grammar-entries"></div>
+        <a class="nota-grammar-link" id="nota-grammar-link" target="_blank" rel="noopener noreferrer" hidden>Open in SAOL ↗</a>
+      </div>
       <textarea id="nota-note-input" placeholder="Add a meaning or note…"></textarea>
       <div class="nota-row">
         <button type="button" class="nota-cancel" id="nota-cancel-btn">Cancel</button>
@@ -244,6 +292,11 @@
   const translateBtn = card.querySelector('#nota-translate-btn');
   const translateStatus = card.querySelector('#nota-translate-status');
 
+  const grammarBox = card.querySelector('#nota-grammar-box');
+  const grammarStatus = card.querySelector('#nota-grammar-status');
+  const grammarEntriesEl = card.querySelector('#nota-grammar-entries');
+  const grammarLink = card.querySelector('#nota-grammar-link');
+
   const conflictView = card.querySelector('#nota-conflict-view');
   const conflictTextEl = card.querySelector('#nota-conflict-text');
   const conflictExistingEl = card.querySelector('#nota-conflict-existing');
@@ -251,10 +304,14 @@
   const conflictAddNewBtn = card.querySelector('#nota-conflict-addnew-btn');
   const conflictBackBtn = card.querySelector('#nota-conflict-back-btn');
 
+  const NOTA_SAOL_URL_PREFIX = 'https://svenska.se/saol/?sok=';
+
   let pendingText = '';
   let lastRect = null;
   let translateToken = 0;
+  let grammarToken = 0;
   let pendingExisting = null;
+  let pendingGrammar = null;
 
   function showEditView() {
     editView.hidden = false;
@@ -271,19 +328,16 @@
 
   async function performSave(text, noteText, existingId) {
     const rect = lastRect;
+    const payload = {
+      note: noteText,
+      pageTitle: document.title,
+      pageUrl: location.href,
+      grammar: pendingGrammar,
+    };
     if (existingId) {
-      await self.NotaStorage.updateNote(existingId, {
-        note: noteText,
-        pageTitle: document.title,
-        pageUrl: location.href,
-      });
+      await self.NotaStorage.updateNote(existingId, payload);
     } else {
-      await self.NotaStorage.addNote({
-        text,
-        note: noteText,
-        pageTitle: document.title,
-        pageUrl: location.href,
-      });
+      await self.NotaStorage.addNote({ text, ...payload });
     }
     hideAll();
     if (rect) showToastAt(rect, existingId ? 'Updated!' : 'Saved!');
@@ -318,6 +372,11 @@
         noteInput.value = result.translated;
       }
       translateStatus.textContent = `Translated → ${result.targetLang}`;
+      if (result.detectedLang === 'sv' && text && !/\s/.test(text)) {
+        runGrammarLookup(text);
+      } else {
+        resetGrammarBox();
+      }
     } else if (/context invalidated/i.test(result?.error || '')) {
       translateStatus.textContent = 'Extension updated — refresh this page';
     } else {
@@ -325,10 +384,93 @@
     }
   }
 
+  function resetGrammarBox() {
+    grammarToken++;
+    pendingGrammar = null;
+    grammarBox.hidden = true;
+    grammarStatus.textContent = '';
+    grammarEntriesEl.textContent = '';
+    grammarLink.hidden = true;
+  }
+
+  function requestGrammar(word) {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({ type: 'NOTA_SWEDISH_GRAMMAR', word }, (response) => {
+        if (chrome.runtime.lastError) {
+          resolve({ ok: false, error: chrome.runtime.lastError.message });
+          return;
+        }
+        resolve(response);
+      });
+    });
+  }
+
+  function renderGrammarEntries(entries) {
+    grammarEntriesEl.textContent = '';
+    for (const entry of entries) {
+      const section = document.createElement('div');
+      section.className = 'nota-grammar-entry';
+
+      const posLabel = document.createElement('div');
+      posLabel.className = 'nota-grammar-pos';
+      posLabel.textContent = entry.partOfSpeechLabel;
+      section.appendChild(posLabel);
+
+      if (entry.forms && entry.forms.length) {
+        const grid = document.createElement('div');
+        grid.className = 'nota-grammar-forms';
+        for (const f of entry.forms) {
+          const labelEl = document.createElement('span');
+          labelEl.className = 'nota-grammar-form-label';
+          labelEl.textContent = f.label;
+          const valueEl = document.createElement('span');
+          valueEl.className = 'nota-grammar-form-value';
+          valueEl.textContent = f.form;
+          grid.append(labelEl, valueEl);
+        }
+        section.appendChild(grid);
+      }
+      grammarEntriesEl.appendChild(section);
+    }
+  }
+
+  async function runGrammarLookup(word) {
+    const myToken = ++grammarToken;
+    pendingGrammar = null;
+    grammarBox.hidden = false;
+    grammarStatus.textContent = 'Looking up grammar…';
+    grammarEntriesEl.textContent = '';
+    grammarLink.href = NOTA_SAOL_URL_PREFIX + encodeURIComponent(word.toLowerCase());
+    grammarLink.hidden = false;
+
+    let result;
+    try {
+      result = await requestGrammar(word);
+    } catch (err) {
+      result = { ok: false, error: (err && err.message) || String(err) };
+    }
+    if (myToken !== grammarToken) return; // superseded by a newer selection/card
+
+    if (result && result.ok) {
+      if (result.entries && result.entries.length) {
+        pendingGrammar = { lookupWord: result.lookupWord, entries: result.entries, saolUrl: result.saolUrl };
+        grammarStatus.textContent = '';
+        renderGrammarEntries(result.entries);
+      } else {
+        grammarStatus.textContent = 'Not found in the dictionary.';
+      }
+    } else if (/context invalidated/i.test(result?.error || '')) {
+      grammarStatus.textContent = 'Extension updated — refresh this page';
+    } else {
+      grammarStatus.textContent = 'Grammar lookup unavailable right now.';
+    }
+  }
+
   function hideAll() {
     btn.classList.remove('visible');
     card.classList.remove('visible');
     translateToken++; // invalidate any in-flight translation for the closed card
+    grammarToken++; // invalidate any in-flight grammar lookup for the closed card
   }
 
   function showButtonAt(rect) {
@@ -343,6 +485,7 @@
     pendingText = text;
     pendingExisting = null;
     showEditView();
+    resetGrammarBox();
     selectedTextEl.textContent = text;
     noteInput.value = '';
     translateStatus.textContent = '';

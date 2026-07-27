@@ -2,9 +2,9 @@
   "manifest_version": 3,
   "name": "Nota — Word & Phrase Notes",
   "version": "0.1.0",
-  "description": "Select any word or phrase on a page and save a note or meaning for it. Browse, search, edit and export your saved notes anytime.",
+  "description": "Select text to save a note with translation suggestions and Swedish grammar lookup. Search, edit, and export your saved notes.",
   "permissions": ["storage", "contextMenus"],
-  "host_permissions": ["https://translate.googleapis.com/*"],
+  "host_permissions": ["https://translate.googleapis.com/*", "https://spraakbanken4.it.gu.se/*"],
   "background": {
     "service_worker": "background.js"
   },

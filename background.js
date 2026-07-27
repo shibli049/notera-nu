@@ -48,3 +48,102 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   })();
   return true; // keep the message channel open for the async sendResponse
 });
+
+// Swedish grammar lookup, sourced from Sprakbanken's (University of Gothenburg) Karp API,
+// resource "saldom" (SALDO's morphology, CC-BY-4.0): https://spraakbanken.gu.se/en/resources/saldom
+// This is not the Swedish Academy's SAOL itself (no public API / no licensed offline dataset
+// exists for that), but a sibling academic lexicon built to track SAOL's standard headwords
+// and inflection norms, live-queryable and openly licensed.
+const NOTA_SAOL_BASE_URL = 'https://svenska.se/saol/?sok=';
+const NOTA_GRAMMAR_CACHE = new Map(); // lowercased word -> response payload (best-effort, resets on service worker eviction)
+
+// Only plain single-word classes; entries tagged with an "m" suffix (nnm, vbm, avm, abm, ...)
+// or with a multi-word baseform are idioms/phrases and are filtered out.
+const NOTA_SUPPORTED_POS = {
+  nn: { label: 'Noun', forms: [
+    ['sg indef nom', 'Indefinite singular'],
+    ['sg def nom', 'Definite singular'],
+    ['pl indef nom', 'Indefinite plural'],
+    ['pl def nom', 'Definite plural'],
+  ] },
+  vb: { label: 'Verb', forms: [
+    ['inf aktiv', 'Infinitive'],
+    ['pres ind aktiv', 'Present'],
+    ['pret ind aktiv', 'Past'],
+    ['sup aktiv', 'Supine'],
+    ['imper', 'Imperative'],
+  ] },
+  av: { label: 'Adjective', forms: [
+    ['pos indef sg u nom', 'Indefinite (en-word)'],
+    ['pos indef sg n nom', 'Indefinite (ett-word)'],
+    ['pos def pl nom', 'Definite / plural'],
+    ['komp nom', 'Comparative'],
+    ['super indef nom', 'Superlative'],
+  ] },
+  ab: { label: 'Adverb', forms: [] },
+};
+
+async function notaLookupSwedishGrammar(word) {
+  const lookupWord = word.trim().toLowerCase();
+  if (!lookupWord || /\s/.test(lookupWord)) {
+    throw new Error('Grammar lookup only supports single words');
+  }
+  if (NOTA_GRAMMAR_CACHE.has(lookupWord)) {
+    return NOTA_GRAMMAR_CACHE.get(lookupWord);
+  }
+
+  const url =
+    'https://spraakbanken4.it.gu.se/karp/v7/query/saldom' +
+    `?q=equals%7CinflectionTable.writtenForm%7C${encodeURIComponent(lookupWord)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Grammar request failed (${res.status})`);
+  const data = await res.json();
+  const hits = Array.isArray(data && data.hits) ? data.hits : [];
+
+  const seenPos = new Set();
+  const entries = [];
+  for (const hit of hits) {
+    const entry = hit && hit.entry;
+    if (!entry || !entry.baseform || /\s/.test(entry.baseform)) continue; // drop idioms/phrases
+    const posConfig = NOTA_SUPPORTED_POS[entry.partOfSpeech];
+    if (!posConfig || seenPos.has(entry.partOfSpeech)) continue;
+    seenPos.add(entry.partOfSpeech);
+
+    const table = Array.isArray(entry.inflectionTable) ? entry.inflectionTable : [];
+    const forms = posConfig.forms
+      .map(([msd, label]) => {
+        const match = table.find((f) => f.msd === msd);
+        return match ? { label, form: match.writtenForm } : null;
+      })
+      .filter(Boolean);
+
+    entries.push({
+      partOfSpeech: entry.partOfSpeech,
+      partOfSpeechLabel: posConfig.label,
+      baseform: entry.baseform,
+      forms,
+    });
+    if (entries.length >= 3) break;
+  }
+
+  const result = {
+    lookupWord,
+    entries,
+    saolUrl: NOTA_SAOL_BASE_URL + encodeURIComponent(lookupWord),
+  };
+  NOTA_GRAMMAR_CACHE.set(lookupWord, result);
+  return result;
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!message || message.type !== 'NOTA_SWEDISH_GRAMMAR') return;
+  (async () => {
+    try {
+      const result = await notaLookupSwedishGrammar(message.word || '');
+      sendResponse({ ok: true, ...result });
+    } catch (err) {
+      sendResponse({ ok: false, error: err.message || String(err) });
+    }
+  })();
+  return true; // keep the message channel open for the async sendResponse
+});
