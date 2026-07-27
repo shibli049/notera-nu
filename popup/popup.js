@@ -21,7 +21,7 @@ if (isTabView) {
   });
 }
 
-const CSV_COLUMNS = ['text', 'note', 'pageTitle', 'pageUrl', 'createdAt', 'updatedAt'];
+const CSV_COLUMNS = ['text', 'note', 'pageTitle', 'pageUrl', 'grammar', 'createdAt', 'updatedAt'];
 
 let allNotes = [];
 let deleteConfirmId = null;
@@ -263,7 +263,12 @@ function csvEscape(value) {
 function notesToCsv(notes) {
   const lines = [CSV_COLUMNS.join(',')];
   for (const n of notes) {
-    lines.push(CSV_COLUMNS.map((col) => csvEscape(n[col])).join(','));
+    lines.push(
+      CSV_COLUMNS.map((col) => {
+        const value = col === 'grammar' ? (n.grammar ? JSON.stringify(n.grammar) : '') : n[col];
+        return csvEscape(value);
+      }).join(',')
+    );
   }
   return lines.join('\r\n');
 }
@@ -324,6 +329,19 @@ function csvToNoteObjects(text) {
   });
 }
 
+// Grammar comes as an object from JSON imports, or a JSON-encoded string from the CSV column.
+function parseGrammarField(value) {
+  if (value && typeof value === 'object') return value;
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 // Merges items from an import file into existing notes, matching duplicates by
 // normalized text (same rule the save flow uses) rather than by id, since
 // ids don't round-trip reliably through CSV/Excel edits.
@@ -348,7 +366,7 @@ async function importNoteObjects(items) {
       note: (item.note || '').trim(),
       pageTitle: item.pageTitle || '',
       pageUrl: item.pageUrl || '',
-      grammar: item.grammar || null, // present for JSON imports only; CSV has no grammar column
+      grammar: parseGrammarField(item.grammar),
       createdAt: item.createdAt || now,
       updatedAt: item.updatedAt || now,
     });
