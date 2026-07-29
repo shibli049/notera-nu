@@ -554,6 +554,47 @@ html.nota-tab-view main {
   margin-top: 6px;
 }
 
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border-top: 1px solid var(--nota-line);
+  background: var(--nota-surface);
+}
+
+.pagination-controls[hidden] {
+  display: none;
+}
+
+.pagination-btn {
+  border: 1px solid var(--nota-accent-soft-border);
+  background: var(--nota-accent-soft);
+  color: var(--nota-accent-hover);
+  padding: 4px 10px;
+  border-radius: var(--nota-radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--nota-accent-soft-border);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.page-indicator {
+  font-size: 11px;
+  color: var(--nota-muted);
+  white-space: nowrap;
+}
+
 .nota-footer {
   display: flex;
   justify-content: space-between;

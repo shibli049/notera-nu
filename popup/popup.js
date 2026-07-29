@@ -20,6 +20,10 @@ const syncNowBtn = document.getElementById('sync-now-btn');
 const syncStatusLine = document.getElementById('sync-status-line');
 const syncQuotaBanner = document.getElementById('sync-quota-banner');
 const footerSyncNote = document.getElementById('footer-sync-note');
+const paginationControls = document.getElementById('pagination-controls');
+const prevPageBtn = document.getElementById('prev-page-btn');
+const nextPageBtn = document.getElementById('next-page-btn');
+const pageIndicator = document.getElementById('page-indicator');
 
 const isTabView = new URLSearchParams(location.search).get('view') === 'tab';
 if (isTabView) {
@@ -32,8 +36,11 @@ if (isTabView) {
 }
 
 const CSV_COLUMNS = ['text', 'note', 'pageTitle', 'pageUrl', 'grammar', 'createdAt', 'updatedAt'];
+const NOTES_PER_PAGE = 20;
 
 let allNotes = [];
+let filteredNotes = [];
+let currentPage = 1;
 let deleteConfirmId = null;
 let currentSettings = null;
 
@@ -111,7 +118,6 @@ function renderGrammarBody(container, grammar) {
 
 function render(notes) {
   listEl.textContent = '';
-  emptyStateEl.hidden = notes.length > 0;
 
   for (const entry of notes) {
     const node = template.content.firstElementChild.cloneNode(true);
@@ -258,21 +264,53 @@ function render(notes) {
 
     listEl.appendChild(node);
   }
-
-  countLabel.textContent = notes.length === 1 ? '1 note' : `${notes.length} notes`;
 }
 
-function applyFilter() {
+// Filters (and alphabetically sorts) allNotes into filteredNotes, then renders
+// whichever page is current. Pass resetPage when the result set has changed in
+// a way that should send the user back to page 1 (e.g. a new search query) —
+// other refreshes (edits, sync, delete) keep the reader on the same page.
+function applyFilter({ resetPage = false } = {}) {
   const q = searchInput.value.trim().toLowerCase();
-  const filtered = q
+  filteredNotes = (q
     ? allNotes.filter(
         (n) => n.text.toLowerCase().includes(q) || (n.note || '').toLowerCase().includes(q)
       )
-    : allNotes;
-  render(filtered);
+    : allNotes.slice()
+  ).sort((a, b) => a.text.localeCompare(b.text, undefined, { sensitivity: 'base' }));
+
+  if (resetPage) currentPage = 1;
+  renderPage();
 }
 
-searchInput.addEventListener('input', applyFilter);
+function renderPage() {
+  const total = filteredNotes.length;
+  const totalPages = Math.max(1, Math.ceil(total / NOTES_PER_PAGE));
+  currentPage = Math.min(Math.max(currentPage, 1), totalPages);
+
+  const start = (currentPage - 1) * NOTES_PER_PAGE;
+  render(filteredNotes.slice(start, start + NOTES_PER_PAGE));
+
+  emptyStateEl.hidden = total > 0;
+  countLabel.textContent = total === 1 ? '1 note' : `${total} notes`;
+
+  paginationControls.hidden = totalPages <= 1;
+  pageIndicator.textContent = `Page ${currentPage} of ${totalPages}`;
+  prevPageBtn.disabled = currentPage <= 1;
+  nextPageBtn.disabled = currentPage >= totalPages;
+}
+
+prevPageBtn.addEventListener('click', () => {
+  currentPage--;
+  renderPage();
+});
+
+nextPageBtn.addEventListener('click', () => {
+  currentPage++;
+  renderPage();
+});
+
+searchInput.addEventListener('input', () => applyFilter({ resetPage: true }));
 
 function showIoStatus(message, isError = false) {
   ioStatusEl.textContent = message;
