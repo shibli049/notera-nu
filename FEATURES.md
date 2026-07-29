@@ -35,6 +35,15 @@ A reference list of everything Notera Nu currently does, grouped by area.
 - **Relative timestamps** — "just now" / "5m ago" / "3d ago", falling back to a full date after 30 days.
 - **Full tab view** — an "⤢ Full view" button opens the same popup UI in a full browser tab for more room.
 
+## Quiz mode
+
+Available from a "🎴 Quiz" button in the full tab view (see **Full tab view** above):
+
+- **Random flip cards** — shows one saved word at a time on a card; clicking it flips (with a 3D rotation) to reveal the note and, if present and enabled, the Swedish grammar for that entry.
+- **No-repeat shuffling** — "Next word ›" draws another random word without repeating any word until every saved word has been shown once, then reshuffles.
+- **Adapts to content** — the answer side emphasizes the note text over the (smaller, muted) grammar details, and centers itself when there's no grammar data to show.
+- Falls back to an empty-state message if there are no saved notes yet.
+
 ## Settings
 
 All settings live behind a "⚙ Settings" toggle in the popup header:

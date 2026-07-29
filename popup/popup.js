@@ -24,11 +24,25 @@ const paginationControls = document.getElementById('pagination-controls');
 const prevPageBtn = document.getElementById('prev-page-btn');
 const nextPageBtn = document.getElementById('next-page-btn');
 const pageIndicator = document.getElementById('page-indicator');
+const quizBtn = document.getElementById('quiz-btn');
+const notesView = document.getElementById('notes-view');
+const quizView = document.getElementById('quiz-view');
+const quizEmpty = document.getElementById('quiz-empty');
+const quizCardWrap = document.getElementById('quiz-card-wrap');
+const quizCard = document.getElementById('quiz-card');
+const quizWordEl = document.getElementById('quiz-word');
+const quizWordBackEl = document.getElementById('quiz-word-back');
+const quizNoteEl = document.getElementById('quiz-note');
+const quizGrammarEl = document.getElementById('quiz-grammar');
+const quizNextBtn = document.getElementById('quiz-next-btn');
+const quizProgressEl = document.getElementById('quiz-progress');
+const quizCardBackEl = document.querySelector('.quiz-card-back');
 
 const isTabView = new URLSearchParams(location.search).get('view') === 'tab';
 if (isTabView) {
   document.documentElement.classList.add('nota-tab-view');
   expandBtn.hidden = true;
+  quizBtn.hidden = false;
 } else {
   expandBtn.addEventListener('click', () => {
     chrome.tabs.create({ url: chrome.runtime.getURL('popup/popup.html') + '?view=tab' });
@@ -537,6 +551,79 @@ settingsBtn.addEventListener('click', () => {
   const willOpen = settingsPanel.hidden;
   settingsPanel.hidden = !willOpen;
   settingsBtn.setAttribute('aria-expanded', String(willOpen));
+});
+
+let quizEntry = null;
+let quizSeenIds = new Set();
+
+function pickRandomQuizEntry() {
+  if (!allNotes.length) return null;
+  if (quizSeenIds.size >= allNotes.length) quizSeenIds.clear();
+  const unseen = allNotes.filter((n) => !quizSeenIds.has(n.id));
+  const pool = unseen.length ? unseen : allNotes;
+  const entry = pool[Math.floor(Math.random() * pool.length)];
+  quizSeenIds.add(entry.id);
+  return entry;
+}
+
+function renderQuizCard() {
+  quizCard.classList.remove('flipped');
+  quizWordEl.textContent = quizEntry.text;
+  quizWordBackEl.textContent = quizEntry.text;
+  quizNoteEl.textContent = quizEntry.note || 'No note added';
+  quizNoteEl.classList.toggle('quiz-note-empty', !quizEntry.note);
+
+  const hasGrammar = !!(currentSettings && currentSettings.swedishGrammarEnabled && quizEntry.grammar && quizEntry.grammar.entries && quizEntry.grammar.entries.length);
+  if (hasGrammar) {
+    quizGrammarEl.hidden = false;
+    renderGrammarBody(quizGrammarEl, quizEntry.grammar);
+  } else {
+    quizGrammarEl.hidden = true;
+    quizGrammarEl.textContent = '';
+  }
+  quizCardBackEl.classList.toggle('no-grammar', !hasGrammar);
+
+  quizProgressEl.textContent = `${quizSeenIds.size} of ${allNotes.length} seen this round`;
+}
+
+function showNextQuizCard() {
+  quizEntry = pickRandomQuizEntry();
+  if (!quizEntry) {
+    quizCardWrap.hidden = true;
+    quizEmpty.hidden = false;
+    return;
+  }
+  quizCardWrap.hidden = false;
+  quizEmpty.hidden = true;
+  renderQuizCard();
+}
+
+quizCard.addEventListener('click', () => {
+  if (!quizEntry) return;
+  quizCard.classList.toggle('flipped');
+});
+
+quizCard.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    quizCard.click();
+  }
+});
+
+quizNextBtn.addEventListener('click', showNextQuizCard);
+
+quizBtn.addEventListener('click', () => {
+  const enteringQuiz = quizView.hidden;
+  quizView.hidden = !enteringQuiz;
+  notesView.hidden = enteringQuiz;
+  quizBtn.setAttribute('aria-expanded', String(enteringQuiz));
+  quizBtn.textContent = enteringQuiz ? '📋 Word list' : '🎴 Quiz';
+  if (enteringQuiz) {
+    settingsPanel.hidden = true;
+    settingsBtn.setAttribute('aria-expanded', 'false');
+    quizSeenIds.clear();
+    showNextQuizCard();
+  }
 });
 
 document.addEventListener('click', (e) => {

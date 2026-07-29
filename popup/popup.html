@@ -13,6 +13,7 @@
       </div>
       <div class="nota-actions">
         <button type="button" id="settings-btn" class="icon-btn" title="Settings" aria-expanded="false">⚙ Settings</button>
+        <button type="button" id="quiz-btn" class="icon-btn" title="Quiz yourself on your saved words" aria-expanded="false" hidden>🎴 Quiz</button>
         <button type="button" id="expand-btn" class="icon-btn" title="Open in a full browser tab">⤢ Full view</button>
         <details class="nota-menu">
           <summary class="icon-btn">Export ▾</summary>
@@ -91,28 +92,56 @@
       </div>
     </div>
 
-    <div class="nota-search">
-      <input type="search" id="search-input" placeholder="Search your notes…" />
-    </div>
-
-    <main id="list-container">
-      <ul id="notes-list"></ul>
-      <div id="empty-state" class="empty-state" hidden>
-        <p>No notes yet.</p>
-        <p class="empty-state-hint">Select any word or phrase on a page and click the + button to save a note.</p>
+    <div id="notes-view">
+      <div class="nota-search">
+        <input type="search" id="search-input" placeholder="Search your notes…" />
       </div>
-    </main>
 
-    <div id="pagination-controls" class="pagination-controls" hidden>
-      <button type="button" id="prev-page-btn" class="pagination-btn">‹ Prev</button>
-      <span id="page-indicator" class="page-indicator"></span>
-      <button type="button" id="next-page-btn" class="pagination-btn">Next ›</button>
+      <main id="list-container">
+        <ul id="notes-list"></ul>
+        <div id="empty-state" class="empty-state" hidden>
+          <p>No notes yet.</p>
+          <p class="empty-state-hint">Select any word or phrase on a page and click the + button to save a note.</p>
+        </div>
+      </main>
+
+      <div id="pagination-controls" class="pagination-controls" hidden>
+        <button type="button" id="prev-page-btn" class="pagination-btn">‹ Prev</button>
+        <span id="page-indicator" class="page-indicator"></span>
+        <button type="button" id="next-page-btn" class="pagination-btn">Next ›</button>
+      </div>
+
+      <footer class="nota-footer">
+        <span id="count-label"></span>
+        <span id="footer-sync-note" class="sync-note"></span>
+      </footer>
     </div>
 
-    <footer class="nota-footer">
-      <span id="count-label"></span>
-      <span id="footer-sync-note" class="sync-note"></span>
-    </footer>
+    <div id="quiz-view" hidden>
+      <div id="quiz-empty" class="empty-state" hidden>
+        <p>No notes yet.</p>
+        <p class="empty-state-hint">Save some notes first, then come back to quiz yourself.</p>
+      </div>
+      <div id="quiz-card-wrap" class="quiz-card-wrap" hidden>
+        <div id="quiz-card" class="quiz-card" tabindex="0" role="button" aria-label="Flip card to reveal the note">
+          <div class="quiz-card-inner">
+            <div class="quiz-card-face quiz-card-front">
+              <span id="quiz-word" class="quiz-word"></span>
+              <span class="quiz-hint">Click to flip</span>
+            </div>
+            <div class="quiz-card-face quiz-card-back">
+              <span id="quiz-word-back" class="quiz-word-back"></span>
+              <div id="quiz-note" class="quiz-note"></div>
+              <div id="quiz-grammar" class="note-grammar-body quiz-grammar-body" hidden></div>
+            </div>
+          </div>
+        </div>
+        <div class="quiz-controls">
+          <button type="button" id="quiz-next-btn" class="pagination-btn">Next word ›</button>
+        </div>
+        <div id="quiz-progress" class="quiz-progress"></div>
+      </div>
+    </div>
 
     <template id="note-item-template">
       <li class="note-item" data-id="">
