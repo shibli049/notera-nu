@@ -1,4 +1,20 @@
+importScripts(
+  'lib/storage.js',
+  'lib/sync/compression.js',
+  'lib/sync/hash.js',
+  'lib/sync/merge.js',
+  'lib/sync/chromeSyncBackend.js',
+  'lib/sync/driveBackend.js',
+  'lib/sync/engine.js'
+);
+
 const CONTEXT_MENU_ID = 'nota-add-note';
+const NOTA_PERIODIC_SYNC_ALARM = 'nota-periodic-sync';
+const NOTA_DEBOUNCED_SYNC_ALARM = 'nota-debounced-sync';
+
+function notaEnsurePeriodicSyncAlarm() {
+  chrome.alarms.create(NOTA_PERIODIC_SYNC_ALARM, { periodInMinutes: 15 });
+}
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
@@ -6,6 +22,19 @@ chrome.runtime.onInstalled.addListener(() => {
     title: 'Add Notera Nu note for "%s"',
     contexts: ['selection'],
   });
+  notaEnsurePeriodicSyncAlarm();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  notaEnsurePeriodicSyncAlarm();
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === NOTA_PERIODIC_SYNC_ALARM) {
+    self.NotaSyncEngine.runSync({ trigger: 'periodic' });
+  } else if (alarm.name === NOTA_DEBOUNCED_SYNC_ALARM) {
+    self.NotaSyncEngine.runSync({ trigger: 'debounced' });
+  }
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
@@ -38,8 +67,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || message.type !== 'NOTA_TRANSLATE') return;
   (async () => {
     try {
-      const stored = await chrome.storage.local.get('nota_settings');
-      const targetLang = (stored.nota_settings && stored.nota_settings.targetLang) || 'en';
+      const settings = await self.NotaStorage.getSettings();
+      const targetLang = settings.targetLang || 'en';
       const result = await notaTranslateText(message.text, targetLang);
       sendResponse({ ok: true, targetLang, ...result });
     } catch (err) {
@@ -146,4 +175,64 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
   })();
   return true; // keep the message channel open for the async sendResponse
+});
+
+// --- Sync ---
+
+const NOTA_DRIVE_CONNECT_TIMEOUT_MS = 20000;
+
+// chrome.identity.getAuthToken({interactive: true}) doesn't fail fast on a bad
+// client_id — it first needs a Google account signed into the browser itself,
+// and opens a real sign-in tab to get one. If the user never completes (or
+// abandons) that tab, the callback never fires, leaving the popup stuck on
+// "Connecting…" forever. Bound the wait so the popup always gets a response.
+function notaWithTimeout(promise, ms, message) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(Object.assign(new Error(message), { code: 'CONNECT_TIMEOUT' }));
+    }, ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!message) return;
+
+  if (message.type === 'NOTA_NOTES_CHANGED') {
+    // Recreating an alarm with the same name resets its delay — that's the
+    // debounce. Also kick a best-effort immediate attempt since the worker
+    // is already awake to receive this message.
+    chrome.alarms.create(NOTA_DEBOUNCED_SYNC_ALARM, { delayInMinutes: 1 });
+    self.NotaSyncEngine.runSync({ trigger: 'debounced-immediate' });
+    return false;
+  }
+
+  if (message.type === 'NOTA_SYNC_NOW') {
+    self.NotaSyncEngine.runSync({ trigger: 'manual' }).then(sendResponse);
+    return true;
+  }
+
+  if (message.type === 'NOTA_GET_SYNC_STATUS') {
+    self.NotaSyncEngine.getSyncState().then(sendResponse);
+    return true;
+  }
+
+  if (message.type === 'NOTA_CONNECT_DRIVE') {
+    (async () => {
+      try {
+        await notaWithTimeout(
+          self.NotaDriveBackend.getToken({ interactive: true }),
+          NOTA_DRIVE_CONNECT_TIMEOUT_MS,
+          "Google sign-in timed out. Make sure you're signed into Chrome and finish the sign-in tab, then try again."
+        );
+        await self.NotaStorage.saveSettings({ syncBackend: 'drive' });
+        const result = await self.NotaSyncEngine.runSync({ trigger: 'connect' });
+        sendResponse({ ok: true, syncResult: result });
+      } catch (err) {
+        sendResponse({ ok: false, error: err.message || String(err) });
+      }
+    })();
+    return true;
+  }
 });

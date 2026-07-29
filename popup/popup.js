@@ -10,6 +10,11 @@ const importInput = document.getElementById('import-input');
 const targetLangSelect = document.getElementById('target-lang-select');
 const ioStatusEl = document.getElementById('io-status');
 const expandBtn = document.getElementById('expand-btn');
+const syncBackendSelect = document.getElementById('sync-backend-select');
+const syncNowBtn = document.getElementById('sync-now-btn');
+const syncStatusLine = document.getElementById('sync-status-line');
+const syncQuotaBanner = document.getElementById('sync-quota-banner');
+const footerSyncNote = document.getElementById('footer-sync-note');
 
 const isTabView = new URLSearchParams(location.search).get('view') === 'tab';
 if (isTabView) {
@@ -346,8 +351,13 @@ function parseGrammarField(value) {
 // normalized text (same rule the save flow uses) rather than by id, since
 // ids don't round-trip reliably through CSV/Excel edits.
 async function importNoteObjects(items) {
-  const existing = await self.NotaStorage.getAllNotes();
-  const seenTexts = new Set(existing.map((n) => self.NotaStorage.normalizeText(n.text)));
+  // Read the raw (tombstone-inclusive) store: getAllNotes() only returns active
+  // notes, and concatenating onto that filtered view would silently drop every
+  // existing soft-deleted note, breaking delete-sync the moment a file is imported.
+  const existingRaw = await self.NotaStorage.getAllNotesRaw();
+  const seenTexts = new Set(
+    existingRaw.filter((n) => !n.deletedAt).map((n) => self.NotaStorage.normalizeText(n.text))
+  );
   const now = new Date().toISOString();
   const toAdd = [];
   let skipped = 0;
@@ -367,15 +377,16 @@ async function importNoteObjects(items) {
       pageTitle: item.pageTitle || '',
       pageUrl: item.pageUrl || '',
       grammar: parseGrammarField(item.grammar),
+      deletedAt: null,
       createdAt: item.createdAt || now,
       updatedAt: item.updatedAt || now,
     });
   }
 
-  const merged = existing.concat(toAdd);
+  const merged = existingRaw.concat(toAdd);
   merged.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   await self.NotaStorage.saveAllNotes(merged);
-  allNotes = merged;
+  allNotes = merged.filter((n) => !n.deletedAt);
   applyFilter();
   return { added: toAdd.length, skipped };
 }
@@ -442,6 +453,76 @@ document.addEventListener('click', (e) => {
   if (exportMenu.open && !exportMenu.contains(e.target)) exportMenu.open = false;
 });
 
+function requestSyncNow() {
+  return new Promise((resolve) => chrome.runtime.sendMessage({ type: 'NOTA_SYNC_NOW' }, resolve));
+}
+
+function requestSyncStatus() {
+  return new Promise((resolve) => chrome.runtime.sendMessage({ type: 'NOTA_GET_SYNC_STATUS' }, resolve));
+}
+
+function requestConnectDrive() {
+  return new Promise((resolve) => chrome.runtime.sendMessage({ type: 'NOTA_CONNECT_DRIVE' }, resolve));
+}
+
+async function refreshSyncStatus() {
+  const state = (await requestSyncStatus()) || {};
+  const text = state.needsReauth
+    ? 'Google Drive needs reconnecting'
+    : state.lastError
+    ? 'Sync error: ' + state.lastError
+    : state.lastSyncedAt
+    ? 'Synced ' + formatTime(state.lastSyncedAt) + (state.backend === 'drive' ? ' via Google Drive' : ' via Chrome Sync')
+    : 'Not synced yet';
+  syncStatusLine.textContent = text;
+  footerSyncNote.textContent = text;
+  syncQuotaBanner.hidden = !state.quotaWarning;
+}
+
+syncBackendSelect.addEventListener('change', async () => {
+  const chosen = syncBackendSelect.value;
+  if (chosen === 'drive') {
+    syncStatusLine.textContent = 'Connecting to Google Drive…';
+    const result = await requestConnectDrive();
+    if (!result || !result.ok) {
+      syncBackendSelect.value = (await self.NotaStorage.getSettings()).syncBackend;
+      showIoStatus('Could not connect to Google Drive: ' + (result && result.error), true);
+    } else {
+      allNotes = await self.NotaStorage.getAllNotes();
+      applyFilter();
+    }
+    await refreshSyncStatus();
+    return;
+  }
+  await self.NotaStorage.saveSettings({ syncBackend: chosen });
+  if (chosen !== 'off') {
+    await requestSyncNow();
+    allNotes = await self.NotaStorage.getAllNotes();
+    applyFilter();
+  }
+  await refreshSyncStatus();
+});
+
+syncNowBtn.addEventListener('click', async () => {
+  syncNowBtn.disabled = true;
+  syncStatusLine.textContent = 'Syncing…';
+  await requestSyncNow();
+  allNotes = await self.NotaStorage.getAllNotes();
+  applyFilter();
+  await refreshSyncStatus();
+  syncNowBtn.disabled = false;
+});
+
+// Live-refresh the list if a background sync merges remote changes in while the popup is open.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes[self.NotaStorage.STORAGE_KEY]) {
+    self.NotaStorage.getAllNotes().then((notes) => {
+      allNotes = notes;
+      applyFilter();
+    });
+  }
+});
+
 (async function init() {
   const settings = await self.NotaStorage.getSettings();
   if (targetLangSelect.querySelector(`option[value="${CSS.escape(settings.targetLang)}"]`)) {
@@ -453,6 +534,8 @@ document.addEventListener('click', (e) => {
     targetLangSelect.insertBefore(opt, targetLangSelect.querySelector('option[value="__custom__"]'));
     targetLangSelect.value = settings.targetLang;
   }
+  syncBackendSelect.value = settings.syncBackend;
+  await refreshSyncStatus();
 
   allNotes = await self.NotaStorage.getAllNotes();
   applyFilter();

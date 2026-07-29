@@ -3,8 +3,16 @@
   "name": "Notera Nu — Word & Phrase Notes",
   "version": "0.1.0",
   "description": "Select text to save a note with translation suggestions and Swedish grammar lookup. Search, edit, and export your saved notes.",
-  "permissions": ["storage", "contextMenus"],
-  "host_permissions": ["https://translate.googleapis.com/*", "https://spraakbanken4.it.gu.se/*"],
+  "permissions": ["storage", "contextMenus", "alarms", "identity"],
+  "host_permissions": [
+    "https://translate.googleapis.com/*",
+    "https://spraakbanken4.it.gu.se/*",
+    "https://www.googleapis.com/*"
+  ],
+  "oauth2": {
+    "client_id": "REPLACE_WITH_YOUR_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": ["https://www.googleapis.com/auth/drive.appdata"]
+  },
   "background": {
     "service_worker": "background.js"
   },

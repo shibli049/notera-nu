@@ -61,6 +61,20 @@
       </p>
     </div>
 
+    <div class="nota-settings nota-sync">
+      <label for="sync-backend-select">Sync notes across devices</label>
+      <select id="sync-backend-select">
+        <option value="off">Off (this device only)</option>
+        <option value="chrome-sync">Chrome Sync (built-in, no setup)</option>
+        <option value="drive">Google Drive (for large note collections)</option>
+      </select>
+      <button type="button" id="sync-now-btn">Sync now</button>
+      <p id="sync-status-line" class="sync-status-line">Not synced yet</p>
+      <div id="sync-quota-banner" class="sync-quota-banner" hidden>
+        ⚠ Chrome Sync storage is nearly full. Consider switching to Google Drive sync above.
+      </div>
+    </div>
+
     <div class="nota-search">
       <input type="search" id="search-input" placeholder="Search your notes…" />
     </div>
@@ -75,7 +89,7 @@
 
     <footer class="nota-footer">
       <span id="count-label"></span>
-      <span class="sync-note">Local only for now — sync coming soon</span>
+      <span id="footer-sync-note" class="sync-note"></span>
     </footer>
 
     <template id="note-item-template">
