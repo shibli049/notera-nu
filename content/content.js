@@ -243,7 +243,7 @@
   const btn = document.createElement('button');
   btn.className = 'nota-btn';
   btn.type = 'button';
-  btn.title = 'Add a Nota note';
+  btn.title = 'Add a Notera Nu note';
   btn.textContent = '+';
 
   const card = document.createElement('div');
@@ -519,7 +519,7 @@
   function describeError(err) {
     const message = (err && err.message) || String(err || 'Unknown error');
     if (/context invalidated/i.test(message)) {
-      return 'Nota was updated — refresh this page to keep using it.';
+      return 'Notera Nu was updated — refresh this page to keep using it.';
     }
     return 'Something went wrong: ' + message;
   }

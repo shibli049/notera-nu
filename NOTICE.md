@@ -1,6 +1,6 @@
 # Third-party data notice
 
-Nota's own code is MIT licensed (see `LICENSE`). At runtime it also calls two
+Notera Nu's own code is MIT licensed (see `LICENSE`). At runtime it also calls two
 external services; neither one is bundled with the extension or committed to
 this repository — nothing from either is redistributed.
 
@@ -12,7 +12,7 @@ Gothenburg) — resource `saldom`, SALDO's morphology:
 https://spraakbanken.gu.se/en/resources/saldom
 
 That resource is licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
-Nota does not bundle or redistribute the dataset itself; it queries a single
+Notera Nu does not bundle or redistribute the dataset itself; it queries a single
 word at a time and stores only that word's resulting inflection forms in the
 user's own local notes, on their own device, for their own reference.
 

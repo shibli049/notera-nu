@@ -3,7 +3,7 @@ const CONTEXT_MENU_ID = 'nota-add-note';
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: CONTEXT_MENU_ID,
-    title: 'Add Nota note for "%s"',
+    title: 'Add Notera Nu note for "%s"',
     contexts: ['selection'],
   });
 });

@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Nota — Word & Phrase Notes",
+  "name": "Notera Nu — Word & Phrase Notes",
   "version": "0.1.0",
   "description": "Select text to save a note with translation suggestions and Swedish grammar lookup. Search, edit, and export your saved notes.",
   "permissions": ["storage", "contextMenus"],
@@ -17,6 +17,6 @@
   ],
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "Nota"
+    "default_title": "Notera Nu"
   }
 }
