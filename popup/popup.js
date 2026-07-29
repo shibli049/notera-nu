@@ -7,7 +7,12 @@ const exportMenu = document.querySelector('.nota-menu');
 const exportJsonBtn = document.getElementById('export-json-btn');
 const exportCsvBtn = document.getElementById('export-csv-btn');
 const importInput = document.getElementById('import-input');
+const settingsBtn = document.getElementById('settings-btn');
+const settingsPanel = document.getElementById('settings-panel');
+const translateEnabledCheckbox = document.getElementById('translate-enabled-checkbox');
+const translateOptions = document.getElementById('translate-options');
 const targetLangSelect = document.getElementById('target-lang-select');
+const swedishGrammarCheckbox = document.getElementById('swedish-grammar-checkbox');
 const ioStatusEl = document.getElementById('io-status');
 const expandBtn = document.getElementById('expand-btn');
 const syncBackendSelect = document.getElementById('sync-backend-select');
@@ -30,6 +35,7 @@ const CSV_COLUMNS = ['text', 'note', 'pageTitle', 'pageUrl', 'grammar', 'created
 
 let allNotes = [];
 let deleteConfirmId = null;
+let currentSettings = null;
 
 function formatTime(iso) {
   const date = new Date(iso);
@@ -128,13 +134,19 @@ function render(notes) {
 
     const grammarDetails = node.querySelector('.note-grammar');
     const grammarBtn = node.querySelector('.grammar-btn');
-    if (entry.grammar && entry.grammar.entries && entry.grammar.entries.length) {
-      grammarDetails.hidden = false;
-      renderGrammarBody(grammarDetails.querySelector('.note-grammar-body'), entry.grammar);
-    } else if (entry.text && !/\s/.test(entry.text.trim())) {
+    const clearGrammarBtn = grammarDetails.querySelector('.clear-grammar-btn');
+    const isSingleWord = entry.text && !/\s/.test(entry.text.trim());
+
+    function showGrammarLookupBtn() {
+      if (!isSingleWord) return;
+      grammarBtn.hidden = false;
+      grammarBtn.disabled = false;
+      grammarBtn.textContent = 'Grammar';
+    }
+
+    function bindGrammarLookupBtn() {
       // Single word with no grammar data yet (saved before this feature existed, or the
       // automatic lookup found nothing at save time) — offer an on-demand fetch.
-      grammarBtn.hidden = false;
       grammarBtn.addEventListener('click', async () => {
         grammarBtn.disabled = true;
         grammarBtn.textContent = 'Looking up…';
@@ -148,7 +160,7 @@ function render(notes) {
             renderGrammarBody(grammarDetails.querySelector('.note-grammar-body'), grammar);
             grammarDetails.hidden = false;
             grammarDetails.open = true;
-            grammarBtn.remove();
+            grammarBtn.hidden = true;
           } else if (result && result.ok) {
             showIoStatus(`No Swedish grammar data found for "${entry.text}".`, true);
             grammarBtn.disabled = false;
@@ -164,6 +176,30 @@ function render(notes) {
           grammarBtn.textContent = 'Grammar';
         }
       });
+    }
+
+    clearGrammarBtn.addEventListener('click', async () => {
+      try {
+        await self.NotaStorage.updateNote(entry.id, { grammar: null });
+        entry.grammar = null;
+        entry.updatedAt = new Date().toISOString();
+        grammarDetails.hidden = true;
+        grammarDetails.open = false;
+        showGrammarLookupBtn();
+      } catch (err) {
+        showIoStatus('Could not clear grammar: ' + err.message, true);
+      }
+    });
+
+    if (!currentSettings || !currentSettings.swedishGrammarEnabled) {
+      // Feature is off: keep any stored grammar data untouched, just don't show it.
+    } else if (entry.grammar && entry.grammar.entries && entry.grammar.entries.length) {
+      grammarDetails.hidden = false;
+      renderGrammarBody(grammarDetails.querySelector('.note-grammar-body'), entry.grammar);
+      bindGrammarLookupBtn();
+    } else if (isSingleWord) {
+      showGrammarLookupBtn();
+      bindGrammarLookupBtn();
     }
 
     const editBtn = node.querySelector('.edit-btn');
@@ -449,6 +485,22 @@ targetLangSelect.addEventListener('change', async () => {
   await self.NotaStorage.saveSettings({ targetLang: targetLangSelect.value });
 });
 
+swedishGrammarCheckbox.addEventListener('change', async () => {
+  currentSettings = await self.NotaStorage.saveSettings({ swedishGrammarEnabled: swedishGrammarCheckbox.checked });
+  applyFilter();
+});
+
+translateEnabledCheckbox.addEventListener('change', async () => {
+  translateOptions.hidden = !translateEnabledCheckbox.checked;
+  currentSettings = await self.NotaStorage.saveSettings({ translationEnabled: translateEnabledCheckbox.checked });
+});
+
+settingsBtn.addEventListener('click', () => {
+  const willOpen = settingsPanel.hidden;
+  settingsPanel.hidden = !willOpen;
+  settingsBtn.setAttribute('aria-expanded', String(willOpen));
+});
+
 document.addEventListener('click', (e) => {
   if (exportMenu.open && !exportMenu.contains(e.target)) exportMenu.open = false;
 });
@@ -525,6 +577,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 (async function init() {
   const settings = await self.NotaStorage.getSettings();
+  currentSettings = settings;
+  swedishGrammarCheckbox.checked = !!settings.swedishGrammarEnabled;
+  translateEnabledCheckbox.checked = settings.translationEnabled !== false;
+  translateOptions.hidden = !translateEnabledCheckbox.checked;
   if (targetLangSelect.querySelector(`option[value="${CSS.escape(settings.targetLang)}"]`)) {
     targetLangSelect.value = settings.targetLang;
   } else {

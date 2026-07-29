@@ -115,6 +115,19 @@ a:focus-visible {
   background: var(--nota-accent-soft-border);
 }
 
+.icon-btn[aria-expanded='true'] {
+  background: var(--nota-accent-soft-border);
+}
+
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-panel[hidden] {
+  display: none;
+}
+
 .nota-menu {
   position: relative;
 }
@@ -200,6 +213,17 @@ a:focus-visible {
   color: var(--nota-muted);
 }
 
+#translate-options {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+#translate-options[hidden] {
+  display: none;
+}
+
 #target-lang-select {
   width: 100%;
   padding: 5px 7px;
@@ -219,6 +243,21 @@ a:focus-visible {
   border: 1px solid var(--nota-warn-border);
   border-radius: var(--nota-radius-sm);
   padding: 5px 7px;
+}
+
+.nota-settings .nota-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--nota-ink);
+}
+
+.nota-checkbox-row input[type='checkbox'] {
+  margin: 0;
 }
 
 .nota-sync {
@@ -440,6 +479,22 @@ html.nota-tab-view main {
 }
 
 .note-grammar-link:hover { text-decoration: underline; }
+
+.clear-grammar-btn {
+  display: block;
+  margin-top: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 10.5px;
+  color: var(--nota-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.clear-grammar-btn:hover {
+  color: var(--nota-error-text);
+}
 
 .note-source:hover {
   text-decoration: underline;

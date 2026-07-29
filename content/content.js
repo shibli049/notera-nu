@@ -7,6 +7,16 @@
   document.documentElement.appendChild(host);
   const shadow = host.attachShadow({ mode: 'open' });
 
+  let notaSettings = { swedishGrammarEnabled: false, translationEnabled: true };
+  self.NotaStorage.getSettings().then((s) => {
+    notaSettings = s;
+  });
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes[self.NotaStorage.SETTINGS_KEY]) {
+      notaSettings = changes[self.NotaStorage.SETTINGS_KEY].newValue || notaSettings;
+    }
+  });
+
   const style = document.createElement('style');
   style.textContent = `
     :host {
@@ -191,6 +201,7 @@
 
     .nota-edit-view, .nota-conflict-view { display: flex; flex-direction: column; gap: 8px; }
     .nota-edit-view[hidden], .nota-conflict-view[hidden] { display: none; }
+    .nota-grammar-box[hidden], .nota-translate-row[hidden] { display: none; }
     .nota-conflict-msg { font-size: 13px; }
     .nota-conflict-msg strong { color: var(--nota-accent); }
     .nota-conflict-existing {
@@ -251,11 +262,11 @@
   card.innerHTML = `
     <div class="nota-edit-view" id="nota-edit-view">
       <div class="nota-selected" id="nota-selected-text"></div>
-      <div class="nota-translate-row">
+      <div class="nota-translate-row" id="nota-translate-row">
         <button type="button" class="nota-translate-btn" id="nota-translate-btn">Suggest translation</button>
         <span class="nota-translate-status" id="nota-translate-status"></span>
       </div>
-      <div class="nota-translate-warning">Auto-translate uses an unofficial Google Translate endpoint — it can be slow, wrong, rate-limited, or fail entirely. Always double check it.</div>
+      <div class="nota-translate-warning" id="nota-translate-warning">Auto-translate uses an unofficial Google Translate endpoint — it can be slow, wrong, rate-limited, or fail entirely. Always double check it.</div>
       <div class="nota-grammar-box" id="nota-grammar-box" hidden>
         <div class="nota-grammar-status" id="nota-grammar-status"></div>
         <div class="nota-grammar-entries" id="nota-grammar-entries"></div>
@@ -289,6 +300,8 @@
   const noteInput = card.querySelector('#nota-note-input');
   const saveBtn = card.querySelector('#nota-save-btn');
   const cancelBtn = card.querySelector('#nota-cancel-btn');
+  const translateRow = card.querySelector('#nota-translate-row');
+  const translateWarning = card.querySelector('#nota-translate-warning');
   const translateBtn = card.querySelector('#nota-translate-btn');
   const translateStatus = card.querySelector('#nota-translate-status');
 
@@ -332,12 +345,15 @@
       note: noteText,
       pageTitle: document.title,
       pageUrl: location.href,
-      grammar: pendingGrammar,
     };
+    // Only touch the grammar field when this session actually looked something up —
+    // otherwise an override-save (or a save with the feature disabled) would null out
+    // grammar data an earlier save already attached to this note.
+    if (pendingGrammar) payload.grammar = pendingGrammar;
     if (existingId) {
       await self.NotaStorage.updateNote(existingId, payload);
     } else {
-      await self.NotaStorage.addNote({ text, ...payload });
+      await self.NotaStorage.addNote({ text, grammar: pendingGrammar, ...payload });
     }
     hideAll();
     if (rect) showToastAt(rect, existingId ? 'Updated!' : 'Saved!');
@@ -372,7 +388,7 @@
         noteInput.value = result.translated;
       }
       translateStatus.textContent = `Translated → ${result.targetLang}`;
-      if (result.detectedLang === 'sv' && text && !/\s/.test(text)) {
+      if (notaSettings.swedishGrammarEnabled && result.detectedLang === 'sv' && text && !/\s/.test(text)) {
         runGrammarLookup(text);
       } else {
         resetGrammarBox();
@@ -500,7 +516,11 @@
     card.classList.add('visible');
     btn.classList.remove('visible');
     requestAnimationFrame(() => noteInput.focus());
-    runTranslate(text);
+
+    const translationEnabled = notaSettings.translationEnabled !== false;
+    translateRow.hidden = !translationEnabled;
+    translateWarning.hidden = !translationEnabled;
+    if (translationEnabled) runTranslate(text);
   }
 
   function showToastAt(rect, message = 'Saved!', isError = false) {

@@ -12,6 +12,7 @@
         <h1>Notera Nu</h1>
       </div>
       <div class="nota-actions">
+        <button type="button" id="settings-btn" class="icon-btn" title="Settings" aria-expanded="false">⚙ Settings</button>
         <button type="button" id="expand-btn" class="icon-btn" title="Open in a full browser tab">⤢ Full view</button>
         <details class="nota-menu">
           <summary class="icon-btn">Export ▾</summary>
@@ -29,49 +30,64 @@
 
     <div id="io-status" class="io-status" hidden></div>
 
-    <div class="nota-settings">
-      <label for="target-lang-select">Translate selections to</label>
-      <select id="target-lang-select">
-        <option value="en">English</option>
-        <option value="es">Spanish</option>
-        <option value="fr">French</option>
-        <option value="de">German</option>
-        <option value="it">Italian</option>
-        <option value="pt">Portuguese</option>
-        <option value="nl">Dutch</option>
-        <option value="ru">Russian</option>
-        <option value="zh-CN">Chinese (Simplified)</option>
-        <option value="ja">Japanese</option>
-        <option value="ko">Korean</option>
-        <option value="ar">Arabic</option>
-        <option value="hi">Hindi</option>
-        <option value="bn">Bengali</option>
-        <option value="tr">Turkish</option>
-        <option value="vi">Vietnamese</option>
-        <option value="id">Indonesian</option>
-        <option value="pl">Polish</option>
-        <option value="uk">Ukrainian</option>
-        <option value="th">Thai</option>
-        <option value="__custom__">Other… (enter code)</option>
-      </select>
-      <p class="nota-translate-warning">
-        ⚠ Translation uses an unofficial Google Translate endpoint, not an official API. It's free and needs no
-        setup, but it can be slow, inaccurate, rate-limited, or stop working without notice — always double-check
-        the result before relying on it.
-      </p>
-    </div>
+    <div id="settings-panel" class="settings-panel" hidden>
+      <div class="nota-settings">
+        <label class="nota-checkbox-row">
+          <input type="checkbox" id="translate-enabled-checkbox" />
+          Suggest translations for new notes
+        </label>
+        <div id="translate-options">
+          <label for="target-lang-select">Translate selections to</label>
+          <select id="target-lang-select">
+            <option value="en">English</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="it">Italian</option>
+            <option value="pt">Portuguese</option>
+            <option value="nl">Dutch</option>
+            <option value="ru">Russian</option>
+            <option value="zh-CN">Chinese (Simplified)</option>
+            <option value="ja">Japanese</option>
+            <option value="ko">Korean</option>
+            <option value="ar">Arabic</option>
+            <option value="hi">Hindi</option>
+            <option value="bn">Bengali</option>
+            <option value="tr">Turkish</option>
+            <option value="vi">Vietnamese</option>
+            <option value="id">Indonesian</option>
+            <option value="pl">Polish</option>
+            <option value="uk">Ukrainian</option>
+            <option value="th">Thai</option>
+            <option value="__custom__">Other… (enter code)</option>
+          </select>
+          <p class="nota-translate-warning">
+            ⚠ Translation uses an unofficial Google Translate endpoint, not an official API. It's free and needs no
+            setup, but it can be slow, inaccurate, rate-limited, or stop working without notice — always double-check
+            the result before relying on it.
+          </p>
+        </div>
+      </div>
 
-    <div class="nota-settings nota-sync">
-      <label for="sync-backend-select">Sync notes across devices</label>
-      <select id="sync-backend-select">
-        <option value="off">Off (this device only)</option>
-        <option value="chrome-sync">Chrome Sync (built-in, no setup)</option>
-        <option value="drive">Google Drive (for large note collections)</option>
-      </select>
-      <button type="button" id="sync-now-btn">Sync now</button>
-      <p id="sync-status-line" class="sync-status-line">Not synced yet</p>
-      <div id="sync-quota-banner" class="sync-quota-banner" hidden>
-        ⚠ Chrome Sync storage is nearly full. Consider switching to Google Drive sync above.
+      <div class="nota-settings">
+        <label class="nota-checkbox-row">
+          <input type="checkbox" id="swedish-grammar-checkbox" />
+          Look up Swedish grammar for single-word notes
+        </label>
+      </div>
+
+      <div class="nota-settings nota-sync">
+        <label for="sync-backend-select">Sync notes across devices</label>
+        <select id="sync-backend-select">
+          <option value="off">Off (this device only)</option>
+          <option value="chrome-sync">Chrome Sync (built-in, no setup)</option>
+          <option value="drive">Google Drive (for large note collections)</option>
+        </select>
+        <button type="button" id="sync-now-btn">Sync now</button>
+        <p id="sync-status-line" class="sync-status-line">Not synced yet</p>
+        <div id="sync-quota-banner" class="sync-quota-banner" hidden>
+          ⚠ Chrome Sync storage is nearly full. Consider switching to Google Drive sync above.
+        </div>
       </div>
     </div>
 
@@ -105,6 +121,7 @@
           <details class="note-grammar" hidden>
             <summary>Swedish grammar</summary>
             <div class="note-grammar-body"></div>
+            <button type="button" class="clear-grammar-btn" title="Remove the saved grammar data for this note">Clear grammar</button>
           </details>
         </div>
         <div class="note-controls">
