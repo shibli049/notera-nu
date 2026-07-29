@@ -29,6 +29,7 @@ A reference list of everything Notera Nu currently does, grouped by area.
 ## Notes manager (popup)
 
 - **List, search, and filter** — the popup lists all saved notes with live search across both the selected text and the note body.
+- **Alphabetical sorting and pagination** — notes are sorted alphabetically by their selected text and paginated 20 per page, with prev/next controls and a page indicator; searching resets to page 1, while edits, deletes, and sync keep the reader on the current page.
 - **Inline edit and delete** — edit a note's text in place, or delete it with a confirm-to-avoid-accidents step (the delete button asks for a second click within a few seconds).
 - **Source link** — each note links back to the page it was captured from (falls back to the hostname if no title was captured).
 - **Relative timestamps** — "just now" / "5m ago" / "3d ago", falling back to a full date after 30 days.
@@ -53,7 +54,7 @@ All settings live behind a "⚙ Settings" toggle in the popup header:
 Off by default; two backends to choose from, both driven by the same merge logic:
 
 - **Chrome Sync** — no setup required. Notes are gzip-compressed, base64-encoded, and distributed across hashed storage buckets to stay under Chrome Sync's per-item (8KB), total (100KB), and item-count (512) quotas as the collection grows; only changed buckets are rewritten, and large rewrites are spread across multiple sync cycles.
-- **Google Drive** — for larger note collections. Stores one gzip-compressed JSON file in the user's hidden Drive `appDataFolder` via `chrome.identity` OAuth, with a bounded connect timeout and automatic re-authentication handling if the Drive token expires.
+- **Google Drive** — for larger note collections. Stores one gzip-compressed JSON file in the user's hidden Drive `appDataFolder` via `chrome.identity` OAuth (registered against a fixed extension ID, pinned in the manifest so it doesn't shift if the unpacked extension is moved or reloaded), with a bounded connect timeout and automatic re-authentication handling if the Drive token expires.
 - **Conflict-free merge** — sync is last-write-wins per note (by `updatedAt`, with a deterministic id-based tiebreak on exact ties), so concurrent edits/deletes across devices always converge to the same result without user intervention.
 - **Soft-deleted tombstones** — deleting a note marks it deleted rather than removing it immediately, so the deletion propagates to other devices on the next sync; tombstones are purged 30 days after deletion.
 - **Automatic and manual triggers** — a periodic alarm (every 15 minutes), a debounced sync shortly after any local change, and a "Sync now" button in settings.
