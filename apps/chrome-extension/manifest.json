@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Notera Nu — Word & Phrase Notes",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApBTSkq6txqwH5h7oZRd0t2xpHXOWIAV3kNCej/UAasfuBkw0XkWbu8XLUJox8eFhFjvYYg/+XdBZjOlJOjsMzRuYMKeXci6pdo/WG9UPriq843W3n8zPhio1SuZjjrrTSOw4NUSFnNR6QxkpbKxiFrthQfSxm8Rum9/3/UKKCiMHHFb6Wsw5urkUquPHzFRZREx3p0IdSJ5y1Ph+hpaw2JIdUcze2nsyA0IlMkW95lnBisx+qhTS1HPsaeJkHwzTsjp6aObpmuoVvJd/q6QzGes5trzxeBvJu1p9f1klNsxmKznRorg4GmvGt0yXbUU9xa0ZelhCTuEsBn0rOGFUWwIDAQAB",
   "description": "Select text to save a note with translation suggestions and Swedish grammar lookup. Search, edit, and export your saved notes.",
   "permissions": ["storage", "contextMenus", "alarms", "identity"],
