@@ -18,3 +18,6 @@ Thumbs.db
 # Env / secrets
 .env
 .env.*
+
+# Dependencies
+node_modules/
