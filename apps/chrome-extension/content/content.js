@@ -170,7 +170,7 @@
       border-radius: var(--nota-radius-sm);
       padding: 5px 7px;
     }
-    .nota-scores[hidden] { display: none; }
+    .nota-scores[hidden], .nota-scores-btn[hidden] { display: none; }
     .nota-scores table { width: 100%; border-collapse: collapse; }
     .nota-scores td { padding: 1px 0; }
     .nota-scores td.nota-score-val { text-align: right; font-variant-numeric: tabular-nums; }
@@ -312,7 +312,7 @@
         <label for="nota-source-select">From</label>
         <select class="nota-source-select" id="nota-source-select" title="Wrong language? Pick the right one to re-translate"></select>
         <span class="nota-source-hint" id="nota-source-hint"></span>
-        <button type="button" class="nota-scores-btn" id="nota-scores-btn" aria-expanded="false" title="Show language detection scores (debug)">Scores</button>
+        <button type="button" class="nota-scores-btn" id="nota-scores-btn" aria-expanded="false" title="Show language detection scores (debug)" hidden>Scores</button>
       </div>
       <div class="nota-scores" id="nota-scores" hidden></div>
       <div class="nota-translate-warning" id="nota-translate-warning">Translations are generated on-device by Chrome's built-in translator. Double-check them.</div>
@@ -438,6 +438,9 @@
     sourceSelect.value = result.sourceLang;
     sourceHint.textContent = result.overridden ? '' : result.preferred ? '(preferred)' : result.assumed ? '(assumed)' : '(detected)';
     sourceRow.hidden = false;
+    // Scores are a debug tool, shown only when enabled in Settings.
+    scoresBtn.hidden = !notaSettings.debugEnabled;
+    if (!notaSettings.debugEnabled) scoresBox.hidden = true;
     renderScores(result);
   }
 

@@ -16,7 +16,7 @@ A reference list of everything Notera Nu currently does, grouped by area.
 - **On-demand and automatic translation**: opening the note editor automatically translates the selection on-device with Chrome's built-in Language Detector and Translator APIs (Chrome 138+), and pre-fills the note if it's empty. A "Suggest translation" button re-runs it manually. That click is also needed the first time a language pair's model has to be downloaded.
 - **Assumed source language**: if detection confidence is below 0.7 (common for single words), the selection is treated as the configured assumed language (Swedish by default, configurable in settings). The card shows `(assumed)` when this happens.
 - **Preferred language for similar languages**: closely related languages (Swedish/Danish/Norwegian, Spanish/Portuguese, Czech/Slovak, ...) often score close together. If the preferred (assumed) language is among the detector's candidates with at least 25% of the top guess's confidence, it is used instead, and the card shows `(preferred)`. (Confidences sum to at most 1 and this only applies when the top guess is ≥ 0.7, so the ratio can't usefully exceed ~43%.)
-- **Detection scores (debug)**: a "Scores" button next to the "From" picker shows the detector's score for each candidate language, which one was used and why, and the current thresholds.
+- **Detection scores (debug)**: when "Show debug tools" is on in Settings (off by default), a "Scores" button next to the "From" picker shows the detector's score for each candidate language, which one was used and why, and the current thresholds.
 - **"From" language picker**: after a translation, the note card shows the source language in a dropdown (detected candidates first, then common languages). Picking a different one re-translates the selection from that language.
 - **Graceful failure**: if the APIs are missing, the language pair is unsupported, or anything else fails, the note is pre-filled with the original text and the user can type whatever they want.
 - **Configurable target language** — a settings dropdown covers 20 common languages, plus a custom ISO 639-1 code entry for anything else.
@@ -56,6 +56,7 @@ All settings live behind a "⚙ Settings" toggle in the popup header:
 
 - **Translation**: on/off switch, target language selector, assumed-source-language selector, and an on-device translation note (all hidden together when translation is off).
 - **Swedish grammar lookup**: on/off switch (see above).
+- **Debug tools**: off by default. When on, the note card shows a "Scores" button with the language detector's per-language scores.
 - **Sync**: backend selector and status (see below).
 
 ## Import & export

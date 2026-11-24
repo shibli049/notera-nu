@@ -99,6 +99,7 @@ const NOTA_DEFAULT_SETTINGS = {
   syncBackend: 'off',
   swedishGrammarEnabled: false,
   translationEnabled: true,
+  debugEnabled: false,
 };
 
 async function notaGetSettings() {

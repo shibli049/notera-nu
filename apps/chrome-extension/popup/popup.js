@@ -14,6 +14,7 @@ const translateOptions = document.getElementById('translate-options');
 const targetLangSelect = document.getElementById('target-lang-select');
 const assumedLangSelect = document.getElementById('assumed-lang-select');
 const swedishGrammarCheckbox = document.getElementById('swedish-grammar-checkbox');
+const debugEnabledCheckbox = document.getElementById('debug-enabled-checkbox');
 const ioStatusEl = document.getElementById('io-status');
 const expandBtn = document.getElementById('expand-btn');
 const syncBackendSelect = document.getElementById('sync-backend-select');
@@ -552,6 +553,10 @@ swedishGrammarCheckbox.addEventListener('change', async () => {
   applyFilter();
 });
 
+debugEnabledCheckbox.addEventListener('change', async () => {
+  currentSettings = await self.NotaStorage.saveSettings({ debugEnabled: debugEnabledCheckbox.checked });
+});
+
 translateEnabledCheckbox.addEventListener('change', async () => {
   translateOptions.hidden = !translateEnabledCheckbox.checked;
   currentSettings = await self.NotaStorage.saveSettings({ translationEnabled: translateEnabledCheckbox.checked });
@@ -731,6 +736,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   currentSettings = settings;
   swedishGrammarCheckbox.checked = !!settings.swedishGrammarEnabled;
   translateEnabledCheckbox.checked = settings.translationEnabled !== false;
+  debugEnabledCheckbox.checked = !!settings.debugEnabled;
   translateOptions.hidden = !translateEnabledCheckbox.checked;
   setLangSelectValue(targetLangSelect, settings.targetLang);
   setLangSelectValue(assumedLangSelect, settings.assumedSourceLang);
