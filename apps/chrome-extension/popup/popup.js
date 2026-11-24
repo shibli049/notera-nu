@@ -557,6 +557,21 @@ translateEnabledCheckbox.addEventListener('change', async () => {
   currentSettings = await self.NotaStorage.saveSettings({ translationEnabled: translateEnabledCheckbox.checked });
 });
 
+const shortcutLabel = document.getElementById('shortcut-label');
+const shortcutChangeBtn = document.getElementById('shortcut-change-btn');
+
+async function refreshShortcutLabel() {
+  const commands = await chrome.commands.getAll();
+  const command = commands.find((c) => c.name === 'open-note-editor');
+  shortcutLabel.textContent = (command && command.shortcut) || 'Not set';
+}
+
+shortcutChangeBtn.addEventListener('click', () => {
+  chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+});
+
+window.addEventListener('focus', refreshShortcutLabel);
+
 settingsBtn.addEventListener('click', () => {
   const willOpen = settingsPanel.hidden;
   settingsPanel.hidden = !willOpen;
@@ -679,6 +694,7 @@ syncBackendSelect.addEventListener('change', async () => {
       applyFilter();
     }
     await refreshSyncStatus();
+  refreshShortcutLabel();
     return;
   }
   await self.NotaStorage.saveSettings({ syncBackend: chosen });

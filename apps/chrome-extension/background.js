@@ -45,6 +45,29 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   });
 });
 
+const NOTA_OPEN_EDITOR_COMMAND = 'open-note-editor';
+
+function notaAskTabToOpenEditor(tabId) {
+  return new Promise((resolve) => {
+    chrome.tabs.sendMessage(tabId, { type: 'NOTA_OPEN_EDITOR_FROM_SELECTION' }, (response) => {
+      // lastError is set on pages without our content script (chrome://, Web Store, ...).
+      if (chrome.runtime.lastError) return resolve(false);
+      resolve(!!(response && response.opened));
+    });
+  });
+}
+
+chrome.commands.onCommand.addListener(async (command, tab) => {
+  if (command !== NOTA_OPEN_EDITOR_COMMAND) return;
+  const opened = tab && tab.id ? await notaAskTabToOpenEditor(tab.id) : false;
+  if (opened) return;
+  try {
+    await chrome.action.openPopup();
+  } catch (err) {
+    console.warn('Notera Nu: could not open popup from shortcut', err);
+  }
+});
+
 // Swedish grammar lookup, sourced from Sprakbanken's (University of Gothenburg) Karp API,
 // resource "saldom" (SALDO's morphology, CC-BY-4.0): https://spraakbanken.gu.se/en/resources/saldom
 // This is not the Swedish Academy's SAOL itself (no public API / no licensed offline dataset

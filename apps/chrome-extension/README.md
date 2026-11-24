@@ -9,6 +9,7 @@ A Chrome extension for saving notes on words and phrases as you read the web. Se
 
 - **Select-to-note** — highlight text on any page and a floating `+` button opens a note editor next to the selection.
 - **Context menu** — right-click a selection and choose "Add Notera Nu note" as an alternative to the floating button.
+- **Keyboard shortcut** — press `Alt+Shift+N` with text selected to open the add-note card; with nothing selected it opens your word list. Change it at `chrome://extensions/shortcuts` (or via Settings → Keyboard shortcut).
 - **Translation suggestions**: suggests a translation into your chosen target language and pre-fills the note. It uses Chrome's built-in, on-device Language Detector and Translator APIs (Chrome 138+). When detection confidence is low (common for single words), the source language falls back to a configurable assumed language (Swedish by default).
 - **Swedish grammar lookup** — for single Swedish words, Notera Nu automatically looks up noun/verb/adjective/adverb inflection tables and links out to [SAOL](https://svenska.se/saol/).
 - **Duplicate handling** — saving a note for text you've already noted lets you override the existing note or add a separate entry.

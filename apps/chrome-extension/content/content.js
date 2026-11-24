@@ -619,19 +619,35 @@
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') saveBtn.click();
   });
 
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message && message.type === 'NOTA_OPEN_EDITOR') {
+  function openEditorForText(text) {
+    const selection = window.getSelection();
+    let rect;
+    if (selection && selection.rangeCount > 0 && selection.toString().trim() === text) {
+      rect = selection.getRangeAt(0).getBoundingClientRect();
+    }
+    if (!rect || (rect.width === 0 && rect.height === 0)) {
+      rect = { top: window.innerHeight / 2 - 100, left: window.innerWidth / 2 - 140, right: window.innerWidth / 2 + 140 };
+    }
+    lastRect = rect;
+    showCardAt(rect, text);
+  }
+
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (!message) return;
+    if (message.type === 'NOTA_OPEN_EDITOR') {
       const text = (message.text || '').trim();
-      if (!text) return;
+      if (text) openEditorForText(text);
+      return;
+    }
+    if (message.type === 'NOTA_OPEN_EDITOR_FROM_SELECTION') {
       const selection = window.getSelection();
-      let rect;
-      if (selection && selection.rangeCount > 0 && selection.toString().trim() === text) {
-        rect = selection.getRangeAt(0).getBoundingClientRect();
+      const text = selection ? selection.toString().trim() : '';
+      if (!text || text.length > 500) {
+        sendResponse({ opened: false });
+        return;
       }
-      if (!rect || (rect.width === 0 && rect.height === 0)) {
-        rect = { top: window.innerHeight / 2 - 100, left: window.innerWidth / 2 - 140, right: window.innerWidth / 2 + 140 };
-      }
-      showCardAt(rect, text);
+      openEditorForText(text);
+      sendResponse({ opened: true });
     }
   });
 })();

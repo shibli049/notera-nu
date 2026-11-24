@@ -23,6 +23,12 @@
       "run_at": "document_idle"
     }
   ],
+  "commands": {
+    "open-note-editor": {
+      "suggested_key": { "default": "Alt+Shift+N", "mac": "Alt+Shift+N" },
+      "description": "Add a note for the selected text (opens the word list if nothing is selected)"
+    }
+  },
   "action": {
     "default_popup": "popup/popup.html",
     "default_title": "Notera Nu"

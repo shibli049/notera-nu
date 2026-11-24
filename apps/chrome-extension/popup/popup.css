@@ -283,6 +283,35 @@ a:focus-visible {
   color: var(--nota-ink);
 }
 
+.nota-shortcut {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.nota-shortcut label,
+.shortcut-hint {
+  flex: 0 0 100%;
+}
+
+.shortcut-label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  padding: 3px 7px;
+  border: 1px solid var(--nota-line);
+  border-radius: var(--nota-radius-sm);
+  background: var(--nota-surface);
+  color: var(--nota-ink);
+}
+
+.shortcut-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--nota-muted);
+}
+
+#shortcut-change-btn,
 #sync-now-btn {
   flex: 0 0 auto;
   border: 1px solid var(--nota-accent-soft-border);
@@ -296,6 +325,7 @@ a:focus-visible {
   transition: background 120ms ease;
 }
 
+#shortcut-change-btn:hover,
 #sync-now-btn:hover {
   background: var(--nota-accent-soft-border);
 }

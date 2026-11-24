@@ -6,6 +6,7 @@ A reference list of everything Notera Nu currently does, grouped by area.
 
 - **Select-to-note** — highlighting text on any page shows a floating `+` button next to the selection; clicking it opens a note editor card anchored to that spot.
 - **Context menu entry** — right-clicking a selection offers "Add Notera Nu note for…" as an alternative to the floating button, opening the same editor card.
+- **Keyboard shortcut** — `Alt+Shift+N` (configurable at `chrome://extensions/shortcuts`) opens the same editor card for the current selection; with no selection, or on pages the extension can't run on, it opens the word-list popup instead. Settings shows the current binding with a "Change…" link.
 - **Duplicate detection** — saving a note for text that already has one shows a conflict view with the existing note, letting the user **override** it, **add a separate entry** instead, or go back to editing.
 - **Toast confirmations** — a small toast near the selection confirms "Saved!" / "Updated!", or reports an error (e.g. after an extension update invalidates the page's content script, prompting a page refresh).
 - Each note stores its selected text, the user's note, the source page's title and URL, and creation/update timestamps.
