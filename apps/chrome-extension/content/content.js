@@ -266,7 +266,7 @@
         <button type="button" class="nota-translate-btn" id="nota-translate-btn">Suggest translation</button>
         <span class="nota-translate-status" id="nota-translate-status"></span>
       </div>
-      <div class="nota-translate-warning" id="nota-translate-warning">Auto-translate uses an unofficial Google Translate endpoint — it can be slow, wrong, rate-limited, or fail entirely. Always double check it.</div>
+      <div class="nota-translate-warning" id="nota-translate-warning">Translations are generated on-device by Chrome's built-in translator. Double-check them.</div>
       <div class="nota-grammar-box" id="nota-grammar-box" hidden>
         <div class="nota-grammar-status" id="nota-grammar-status"></div>
         <div class="nota-grammar-entries" id="nota-grammar-entries"></div>
@@ -322,6 +322,7 @@
   let pendingText = '';
   let lastRect = null;
   let translateToken = 0;
+  let lastAutoFill = null; // value we pre-filled; replaced on re-translate if the user hasn't edited it
   let grammarToken = 0;
   let pendingExisting = null;
   let pendingGrammar = null;
@@ -359,44 +360,39 @@
     if (rect) showToastAt(rect, existingId ? 'Updated!' : 'Saved!');
   }
 
-  function requestTranslation(text) {
-    return new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type: 'NOTA_TRANSLATE', text }, (response) => {
-        if (chrome.runtime.lastError) {
-          resolve({ ok: false, error: chrome.runtime.lastError.message });
-          return;
-        }
-        resolve(response);
-      });
-    });
-  }
-
-  async function runTranslate(text) {
+  async function runTranslate(text, { fromClick = false } = {}) {
     const myToken = ++translateToken;
     translateBtn.disabled = true;
     translateStatus.textContent = 'Translating…';
-    let result;
-    try {
-      result = await requestTranslation(text);
-    } catch (err) {
-      result = { ok: false, error: (err && err.message) || String(err) };
-    }
+    // translate() never rejects; on failure it returns the original text.
+    const result = await self.NotaTranslate.translate(text, {
+      targetLang: notaSettings.targetLang || 'en',
+      assumedSourceLang: notaSettings.assumedSourceLang || 'sv',
+      hasUserActivation: fromClick,
+      onProgress: (loaded) => {
+        if (myToken !== translateToken) return;
+        translateStatus.textContent = `Downloading model… ${Math.round((loaded || 0) * 100)}%`;
+      },
+    });
     if (myToken !== translateToken) return; // a newer selection/card superseded this request
     translateBtn.disabled = false;
-    if (result && result.ok) {
-      if (!noteInput.value.trim()) {
-        noteInput.value = result.translated;
-      }
-      translateStatus.textContent = `Translated → ${result.targetLang}`;
-      if (notaSettings.swedishGrammarEnabled && result.detectedLang === 'sv' && text && !/\s/.test(text)) {
-        runGrammarLookup(text);
-      } else {
-        resetGrammarBox();
-      }
-    } else if (/context invalidated/i.test(result?.error || '')) {
-      translateStatus.textContent = 'Extension updated — refresh this page';
+    if (!noteInput.value.trim() || noteInput.value === lastAutoFill) {
+      noteInput.value = result.translated;
+      lastAutoFill = result.translated;
+    }
+    if (result.failed) {
+      translateStatus.textContent = result.reason === 'NEEDS_ACTIVATION'
+        ? 'Click "Suggest translation" to download the language model'
+        : 'Translation unavailable';
+    } else if (result.sameLanguage) {
+      translateStatus.textContent = `Already in ${result.targetLang}${result.assumed ? ' (assumed)' : ''}`;
     } else {
-      translateStatus.textContent = 'Translation failed — see warning above';
+      translateStatus.textContent = `Translated ${result.sourceLang} → ${result.targetLang}${result.assumed ? ' (assumed)' : ''}`;
+    }
+    if (notaSettings.swedishGrammarEnabled && result.sourceLang === 'sv' && text && !/\s/.test(text)) {
+      runGrammarLookup(text);
+    } else {
+      resetGrammarBox();
     }
   }
 
@@ -504,6 +500,7 @@
     resetGrammarBox();
     selectedTextEl.textContent = text;
     noteInput.value = '';
+    lastAutoFill = null;
     translateStatus.textContent = '';
 
     const top = window.scrollY + rect.top - 8;
@@ -582,7 +579,7 @@
   });
 
   cancelBtn.addEventListener('click', hideAll);
-  translateBtn.addEventListener('click', () => runTranslate(pendingText));
+  translateBtn.addEventListener('click', () => runTranslate(pendingText, { fromClick: true }));
 
   saveBtn.addEventListener('click', async () => {
     try {

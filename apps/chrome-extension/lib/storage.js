@@ -95,6 +95,7 @@ async function notaFindByText(text) {
 const NOTA_SETTINGS_KEY = 'nota_settings';
 const NOTA_DEFAULT_SETTINGS = {
   targetLang: 'en',
+  assumedSourceLang: 'sv',
   syncBackend: 'off',
   swedishGrammarEnabled: false,
   translationEnabled: true,

@@ -224,7 +224,8 @@ a:focus-visible {
   display: none;
 }
 
-#target-lang-select {
+#target-lang-select,
+#assumed-lang-select {
   width: 100%;
   padding: 5px 7px;
   border-radius: var(--nota-radius-sm);

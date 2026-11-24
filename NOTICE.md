@@ -1,8 +1,8 @@
 # Third-party data notice
 
-Notera Nu's own code is MIT licensed (see `LICENSE`). At runtime it also calls two
-external services; neither one is bundled with the extension or committed to
-this repository — nothing from either is redistributed.
+Notera Nu's own code is MIT licensed (see `LICENSE`). At runtime it also calls one
+external service. Nothing from it is bundled with the extension, committed to
+this repository, or redistributed.
 
 ## Swedish grammar lookup
 
@@ -21,9 +21,9 @@ SALDO ("Saldos morfologi"), licensed under CC BY 4.0.
 
 ## Translation suggestions
 
-Translation suggestions use an unofficial endpoint behind Google Translate
-(`translate.googleapis.com`) — not an official, licensed API. See the in-app
-warnings for details; treat it as best-effort, not a guaranteed dependency.
+Translation suggestions use Chrome's built-in, on-device Language Detector and
+Translator APIs. No external translation service is called. Chrome itself
+downloads and manages the language models.
 
 ## Development
 

@@ -12,14 +12,16 @@ A reference list of everything Notera Nu currently does, grouped by area.
 
 ## Translation suggestions
 
-- **On-demand and automatic translation** — opening the note editor automatically fetches a suggested translation (via an unofficial Google Translate endpoint) and pre-fills the note if it's empty; a "Suggest translation" button lets the user re-run it manually.
+- **On-demand and automatic translation**: opening the note editor automatically translates the selection on-device with Chrome's built-in Language Detector and Translator APIs (Chrome 138+), and pre-fills the note if it's empty. A "Suggest translation" button re-runs it manually. That click is also needed the first time a language pair's model has to be downloaded.
+- **Assumed source language**: if detection confidence is below 0.7 (common for single words), the selection is treated as the configured assumed language (Swedish by default, configurable in settings). The status shows `(assumed)` when this happens.
+- **Graceful failure**: if the APIs are missing, the language pair is unsupported, or anything else fails, the note is pre-filled with the original text and the user can type whatever they want.
 - **Configurable target language** — a settings dropdown covers 20 common languages, plus a custom ISO 639-1 code entry for anything else.
 - **Toggle on/off** — translation suggestions can be disabled entirely in settings (enabled by default); when off, the translate button, status, and warning are hidden from the note editor and no request is made.
-- An in-editor and in-settings warning notes that this is an unofficial endpoint (no uptime guarantee, can be slow, wrong, or rate-limited).
+- An in-editor and in-settings note says that translations are machine-generated on-device and should be double-checked.
 
 ## Swedish grammar lookup
 
-- **Automatic single-word lookup** — when a translated selection is detected as Swedish and is a single word, its grammar/inflection table is fetched automatically and shown in the note editor.
+- **Automatic single-word lookup**: when a translated selection is detected (or assumed) as Swedish and is a single word, its grammar/inflection table is fetched automatically and shown in the note editor.
 - **Manual re-lookup from the notes list** — a "Grammar" button appears on any single-word note that doesn't yet have grammar data, fetching it on demand.
 - Covers **nouns, verbs, adjectives, and adverbs**, showing the relevant inflected forms (e.g. singular/plural, definite/indefinite, tense) and a link to look the word up on [SAOL](https://svenska.se/saol/).
 - Sourced live from Språkbanken Text's Karp API (`saldom` resource, CC BY 4.0) — nothing is bundled or redistributed; multi-word entries and idioms are filtered out.
@@ -48,7 +50,7 @@ Available from a "🎴 Quiz" button in the full tab view (see **Full tab view** 
 
 All settings live behind a "⚙ Settings" toggle in the popup header:
 
-- **Translation**: on/off switch, target language selector, and the unofficial-endpoint warning (hidden together when translation is off).
+- **Translation**: on/off switch, target language selector, assumed-source-language selector, and an on-device translation note (all hidden together when translation is off).
 - **Swedish grammar lookup**: on/off switch (see above).
 - **Sync**: backend selector and status (see below).
 

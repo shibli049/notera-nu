@@ -12,6 +12,7 @@ const settingsPanel = document.getElementById('settings-panel');
 const translateEnabledCheckbox = document.getElementById('translate-enabled-checkbox');
 const translateOptions = document.getElementById('translate-options');
 const targetLangSelect = document.getElementById('target-lang-select');
+const assumedLangSelect = document.getElementById('assumed-lang-select');
 const swedishGrammarCheckbox = document.getElementById('swedish-grammar-checkbox');
 const ioStatusEl = document.getElementById('io-status');
 const expandBtn = document.getElementById('expand-btn');
@@ -516,26 +517,35 @@ importInput.addEventListener('change', async (e) => {
   }
 });
 
-targetLangSelect.addEventListener('change', async () => {
-  if (targetLangSelect.value === '__custom__') {
-    const code = prompt('Enter a target language code (ISO 639-1), e.g. "sv" for Swedish:');
-    if (!code) {
-      targetLangSelect.value = (await self.NotaStorage.getSettings()).targetLang;
+function setLangSelectValue(selectEl, code) {
+  if (!selectEl.querySelector(`option[value="${CSS.escape(code)}"]`)) {
+    const opt = document.createElement('option');
+    opt.value = code;
+    opt.textContent = code;
+    selectEl.insertBefore(opt, selectEl.querySelector('option[value="__custom__"]'));
+  }
+  selectEl.value = code;
+}
+
+function bindLangSelect(selectEl, settingsKey, promptText) {
+  selectEl.addEventListener('change', async () => {
+    if (selectEl.value === '__custom__') {
+      const code = prompt(promptText);
+      const trimmed = code ? code.trim() : '';
+      if (!trimmed) {
+        selectEl.value = (await self.NotaStorage.getSettings())[settingsKey];
+        return;
+      }
+      setLangSelectValue(selectEl, trimmed);
+      await self.NotaStorage.saveSettings({ [settingsKey]: trimmed });
       return;
     }
-    const trimmed = code.trim();
-    if (!targetLangSelect.querySelector(`option[value="${CSS.escape(trimmed)}"]`)) {
-      const opt = document.createElement('option');
-      opt.value = trimmed;
-      opt.textContent = trimmed;
-      targetLangSelect.insertBefore(opt, targetLangSelect.querySelector('option[value="__custom__"]'));
-    }
-    targetLangSelect.value = trimmed;
-    await self.NotaStorage.saveSettings({ targetLang: trimmed });
-    return;
-  }
-  await self.NotaStorage.saveSettings({ targetLang: targetLangSelect.value });
-});
+    await self.NotaStorage.saveSettings({ [settingsKey]: selectEl.value });
+  });
+}
+
+bindLangSelect(targetLangSelect, 'targetLang', 'Enter a target language code (ISO 639-1), e.g. "sv" for Swedish:');
+bindLangSelect(assumedLangSelect, 'assumedSourceLang', 'Enter the language code to assume (ISO 639-1), e.g. "sv" for Swedish:');
 
 swedishGrammarCheckbox.addEventListener('change', async () => {
   currentSettings = await self.NotaStorage.saveSettings({ swedishGrammarEnabled: swedishGrammarCheckbox.checked });
@@ -706,15 +716,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
   swedishGrammarCheckbox.checked = !!settings.swedishGrammarEnabled;
   translateEnabledCheckbox.checked = settings.translationEnabled !== false;
   translateOptions.hidden = !translateEnabledCheckbox.checked;
-  if (targetLangSelect.querySelector(`option[value="${CSS.escape(settings.targetLang)}"]`)) {
-    targetLangSelect.value = settings.targetLang;
-  } else {
-    const opt = document.createElement('option');
-    opt.value = settings.targetLang;
-    opt.textContent = settings.targetLang;
-    targetLangSelect.insertBefore(opt, targetLangSelect.querySelector('option[value="__custom__"]'));
-    targetLangSelect.value = settings.targetLang;
-  }
+  setLangSelectValue(targetLangSelect, settings.targetLang);
+  setLangSelectValue(assumedLangSelect, settings.assumedSourceLang);
   syncBackendSelect.value = settings.syncBackend;
   await refreshSyncStatus();
 

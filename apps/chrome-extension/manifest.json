@@ -6,7 +6,6 @@
   "description": "Select text to save a note with translation suggestions and Swedish grammar lookup. Search, edit, and export your saved notes.",
   "permissions": ["storage", "contextMenus", "alarms", "identity"],
   "host_permissions": [
-    "https://translate.googleapis.com/*",
     "https://spraakbanken4.it.gu.se/*",
     "https://www.googleapis.com/*"
   ],
@@ -20,7 +19,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["lib/storage.js", "content/content.js"],
+      "js": ["lib/storage.js", "lib/translate.js", "content/content.js"],
       "run_at": "document_idle"
     }
   ],
