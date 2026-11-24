@@ -134,6 +134,48 @@
       color: var(--nota-muted);
       flex: 1;
     }
+    .nota-source-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--nota-muted);
+    }
+    .nota-source-row[hidden] { display: none; }
+    .nota-source-select {
+      font: 11px system-ui, sans-serif;
+      color: var(--nota-ink);
+      background: var(--nota-paper);
+      border: 1px solid var(--nota-line);
+      border-radius: var(--nota-radius-sm);
+      padding: 2px 4px;
+      max-width: 150px;
+    }
+    .nota-source-hint { font-style: italic; flex: 1; }
+    .nota-scores-btn {
+      border: none;
+      background: none;
+      color: var(--nota-muted);
+      font: 11px system-ui, sans-serif;
+      text-decoration: underline;
+      cursor: pointer;
+      padding: 0;
+    }
+    .nota-scores-btn:hover { color: var(--nota-accent-hover); }
+    .nota-scores {
+      font-size: 11px;
+      color: var(--nota-ink);
+      background: var(--nota-accent-soft);
+      border: 1px solid var(--nota-accent-soft-border);
+      border-radius: var(--nota-radius-sm);
+      padding: 5px 7px;
+    }
+    .nota-scores[hidden] { display: none; }
+    .nota-scores table { width: 100%; border-collapse: collapse; }
+    .nota-scores td { padding: 1px 0; }
+    .nota-scores td.nota-score-val { text-align: right; font-variant-numeric: tabular-nums; }
+    .nota-scores tr.nota-score-chosen td { font-weight: 700; }
+    .nota-scores-meta { margin-top: 4px; color: var(--nota-muted); font-size: 10.5px; }
     .nota-translate-warning {
       font-size: 10.5px;
       color: var(--nota-warn-text);
@@ -266,6 +308,13 @@
         <button type="button" class="nota-translate-btn" id="nota-translate-btn">Suggest translation</button>
         <span class="nota-translate-status" id="nota-translate-status"></span>
       </div>
+      <div class="nota-source-row" id="nota-source-row" hidden>
+        <label for="nota-source-select">From</label>
+        <select class="nota-source-select" id="nota-source-select" title="Wrong language? Pick the right one to re-translate"></select>
+        <span class="nota-source-hint" id="nota-source-hint"></span>
+        <button type="button" class="nota-scores-btn" id="nota-scores-btn" aria-expanded="false" title="Show language detection scores (debug)">Scores</button>
+      </div>
+      <div class="nota-scores" id="nota-scores" hidden></div>
       <div class="nota-translate-warning" id="nota-translate-warning">Translations are generated on-device by Chrome's built-in translator. Double-check them.</div>
       <div class="nota-grammar-box" id="nota-grammar-box" hidden>
         <div class="nota-grammar-status" id="nota-grammar-status"></div>
@@ -304,6 +353,11 @@
   const translateWarning = card.querySelector('#nota-translate-warning');
   const translateBtn = card.querySelector('#nota-translate-btn');
   const translateStatus = card.querySelector('#nota-translate-status');
+  const sourceRow = card.querySelector('#nota-source-row');
+  const sourceSelect = card.querySelector('#nota-source-select');
+  const sourceHint = card.querySelector('#nota-source-hint');
+  const scoresBtn = card.querySelector('#nota-scores-btn');
+  const scoresBox = card.querySelector('#nota-scores');
 
   const grammarBox = card.querySelector('#nota-grammar-box');
   const grammarStatus = card.querySelector('#nota-grammar-status');
@@ -322,6 +376,7 @@
   let pendingText = '';
   let lastRect = null;
   let translateToken = 0;
+  let sourceOverride = null; // source language the user picked in the "From" dropdown for this card
   let lastAutoFill = null; // value we pre-filled; replaced on re-translate if the user hasn't edited it
   let grammarToken = 0;
   let pendingExisting = null;
@@ -360,14 +415,76 @@
     if (rect) showToastAt(rect, existingId ? 'Updated!' : 'Saved!');
   }
 
+  // Fallback choices for the "From" picker beyond what the detector suggested.
+  const COMMON_SOURCE_LANGS = ['sv', 'da', 'no', 'en', 'de', 'nl', 'fr', 'es', 'pt', 'it', 'fi', 'pl', 'ru', 'uk', 'tr', 'ar', 'zh', 'ja', 'ko', 'hi'];
+
+  function renderSourcePicker(result) {
+    const langs = [];
+    const add = (code) => {
+      if (code && !langs.some((l) => self.NotaTranslate.baseLang(l) === self.NotaTranslate.baseLang(code))) langs.push(code);
+    };
+    add(result.sourceLang);
+    (result.candidates || []).forEach((c) => add(c.lang));
+    add(notaSettings.assumedSourceLang);
+    COMMON_SOURCE_LANGS.forEach(add);
+
+    sourceSelect.textContent = '';
+    for (const code of langs) {
+      const opt = document.createElement('option');
+      opt.value = code;
+      opt.textContent = self.NotaTranslate.languageName(code);
+      sourceSelect.appendChild(opt);
+    }
+    sourceSelect.value = result.sourceLang;
+    sourceHint.textContent = result.overridden ? '' : result.preferred ? '(preferred)' : result.assumed ? '(assumed)' : '(detected)';
+    sourceRow.hidden = false;
+    renderScores(result);
+  }
+
+  // Debug view: the detector's raw scores for this selection, so the thresholds
+  // in lib/translate.js can be tuned from real examples.
+  function renderScores(result) {
+    scoresBox.textContent = '';
+    const scores = result.scores || [];
+    if (!scores.length) {
+      scoresBox.textContent = 'The language detector returned no scores for this text.';
+    } else {
+      const table = document.createElement('table');
+      for (const { lang, confidence } of scores) {
+        const tr = document.createElement('tr');
+        if (self.NotaTranslate.baseLang(lang) === self.NotaTranslate.baseLang(result.sourceLang)) tr.className = 'nota-score-chosen';
+        const name = document.createElement('td');
+        name.textContent = `${self.NotaTranslate.languageName(lang)} (${lang})`;
+        const val = document.createElement('td');
+        val.className = 'nota-score-val';
+        val.textContent = `${(confidence * 100).toFixed(1)}%`;
+        tr.append(name, val);
+        table.appendChild(tr);
+      }
+      scoresBox.appendChild(table);
+    }
+    const { DETECT_CONFIDENCE_THRESHOLD: t, PREFER_ASSUMED_RATIO: r } = self.NotaTranslate;
+    const meta = document.createElement('div');
+    meta.className = 'nota-scores-meta';
+    const assumedName = self.NotaTranslate.languageName(notaSettings.assumedSourceLang || 'sv');
+    const reason = result.overridden ? 'picked by you'
+      : result.preferred ? `${assumedName} scored at least ${Math.round(r * 100)}% of the top guess`
+      : result.assumed ? `top guess below ${Math.round(t * 100)}%, so ${assumedName} was assumed`
+      : 'top guess';
+    meta.textContent = `Used: ${self.NotaTranslate.languageName(result.sourceLang)} (${reason}). Rules: below ${Math.round(t * 100)}% confidence → ${assumedName}; ${assumedName} ≥ ${Math.round(r * 100)}% of top → ${assumedName}.`;
+    scoresBox.appendChild(meta);
+  }
+
   async function runTranslate(text, { fromClick = false } = {}) {
     const myToken = ++translateToken;
     translateBtn.disabled = true;
+    sourceSelect.disabled = true;
     translateStatus.textContent = 'Translating…';
     // translate() never rejects; on failure it returns the original text.
     const result = await self.NotaTranslate.translate(text, {
       targetLang: notaSettings.targetLang || 'en',
       assumedSourceLang: notaSettings.assumedSourceLang || 'sv',
+      sourceLang: sourceOverride || undefined,
       hasUserActivation: fromClick,
       onProgress: (loaded) => {
         if (myToken !== translateToken) return;
@@ -376,20 +493,31 @@
     });
     if (myToken !== translateToken) return; // a newer selection/card superseded this request
     translateBtn.disabled = false;
+    sourceSelect.disabled = false;
     if (!noteInput.value.trim() || noteInput.value === lastAutoFill) {
       noteInput.value = result.translated;
       lastAutoFill = result.translated;
     }
-    if (result.failed) {
-      translateStatus.textContent = result.reason === 'NEEDS_ACTIVATION'
-        ? 'Click "Suggest translation" to download the language model'
-        : 'Translation unavailable';
-    } else if (result.sameLanguage) {
-      translateStatus.textContent = `Already in ${result.targetLang}${result.assumed ? ' (assumed)' : ''}`;
+    const targetName = self.NotaTranslate.languageName(result.targetLang);
+    if (result.failed && result.reason === 'UNSUPPORTED') {
+      sourceRow.hidden = true;
+      scoresBox.hidden = true;
+      translateStatus.textContent = 'Translation unavailable';
     } else {
-      translateStatus.textContent = `Translated ${result.sourceLang} → ${result.targetLang}${result.assumed ? ' (assumed)' : ''}`;
+      renderSourcePicker(result);
+      if (result.failed) {
+        translateStatus.textContent = result.reason === 'NEEDS_ACTIVATION'
+          ? 'Click "Suggest translation" to download the language model'
+          : result.reason === 'PAIR_UNAVAILABLE'
+            ? `Can't translate this language to ${targetName}`
+            : 'Translation unavailable';
+      } else if (result.sameLanguage) {
+        translateStatus.textContent = `Already in ${targetName}`;
+      } else {
+        translateStatus.textContent = `Translated to ${targetName}`;
+      }
     }
-    if (notaSettings.swedishGrammarEnabled && result.sourceLang === 'sv' && text && !/\s/.test(text)) {
+    if (notaSettings.swedishGrammarEnabled && self.NotaTranslate.baseLang(result.sourceLang) === 'sv' && text && !/\s/.test(text)) {
       runGrammarLookup(text);
     } else {
       resetGrammarBox();
@@ -502,6 +630,10 @@
     noteInput.value = '';
     lastAutoFill = null;
     translateStatus.textContent = '';
+    sourceOverride = null;
+    sourceRow.hidden = true;
+    scoresBox.hidden = true;
+    scoresBtn.setAttribute('aria-expanded', 'false');
 
     const top = window.scrollY + rect.top - 8;
     let left = window.scrollX + rect.left;
@@ -580,6 +712,14 @@
 
   cancelBtn.addEventListener('click', hideAll);
   translateBtn.addEventListener('click', () => runTranslate(pendingText, { fromClick: true }));
+  scoresBtn.addEventListener('click', () => {
+    scoresBox.hidden = !scoresBox.hidden;
+    scoresBtn.setAttribute('aria-expanded', String(!scoresBox.hidden));
+  });
+  sourceSelect.addEventListener('change', () => {
+    sourceOverride = sourceSelect.value;
+    runTranslate(pendingText, { fromClick: true });
+  });
 
   saveBtn.addEventListener('click', async () => {
     try {
